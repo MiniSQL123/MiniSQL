@@ -8,11 +8,11 @@ using namespace std;
 class Block{
 public:
     string FileName;
-    bool isValid;  //是否有效 delete
+    //bool isValid;  //是否有效 delete
     bool isUse;    //是否被使用
     bool isModify; //这个block是否被修改
     bool isPin;    //是否被锁定
-    int Offset;    //位于File下的第 Offset 个块
+    int Offset;    //位于File下的第 Offset 个块 addr=(offset-1)*blocksize
     int LastVistTime;//=clock()
     unsigned char value[BLOCKSIZE+1];//最后一个存储'\0',空白字符'#'
     Block(){
@@ -34,9 +34,9 @@ public:
     void DropTable(Table& TableInf);
     void DropIndex(Index& IndexInf);
     Pos getInsertPos(Table& TableInf);
-    int getBlockIndex( string FileName, int Offset);//获取指定block在buffer中的编号
+    int getBlockIndex(string FileName, int Offset);//获取指定block在buffer中的编号
     //
-    void setInvalid(int BlockIndex);
+    //void setInvalid(int BlockIndex);
     void RemoveFile(string FileName);
     void ClearBlock(int BlockIndex);
     void ModifyBlock(int BlockIndex);//标记block被修改

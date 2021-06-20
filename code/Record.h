@@ -25,8 +25,6 @@ public:
 	bool CreateTable(Table& TableInf);
 
 	Table SelectProject(Table& TableInf, vector<int> SelectAttrIndex);
-	Tuple String2Tuper(Table& TableInf, string stringRow);
-    bool UNIQUE(Table& TableInf, where w, int loca);
 };
 
 #endif

@@ -9,60 +9,50 @@
 #include <iostream>
 #include <vector>
 using namespace std;
-
+#define INTTYPE -1
+#define FLOATTYPE 0
 struct Attribute{
     int type[AttributeNum];          //data type
     string name[AttributeNum];       //attribute name
     bool unique[AttributeNum];       //unique
     int num;                         //the number of Attribute
 };
-
+struct Index{
+    int num;            //the number of index in a Table
+    int AttrIndex[10]; //the index of attribute that has a index
+    string IndexName[10];
+};
 class Data{
 public:
-    int type; //-3-null -2-int -1-float 0~255-char.
+    int type; 
     Data(){}
-    Data(const Data& otherData){
-        type=otherData.type;
-    }
-    virtual ~Data(){};
+    Data(const Data& otherData);
+    virtual ~Data(){}
 };
 class Datai : public Data{
 public:
     int data;
-    Datai(int i):data(i){
-        type = -2;
-    };
-    Datai(const Datai& otherDatai){
-        type=otherDatai.type;
-        data=otherDatai.type;
-    }
+    Datai(){}
+    Datai(int i);
+    Datai(const Datai& otherDatai);
     ~Datai(){}
 };
 
 class Dataf : public Data{
 public:
     float data;
-    Dataf(float f):data(f){
-        type = -1;
-    };
-    Dataf(const Dataf& otherDataf){
-        type=otherDataf.type;
-        data=otherDataf.data;
-    }
+    Dataf(){}
+    Dataf(float f);
+    Dataf(const Dataf& otherDataf);
     ~Dataf(){}
-    
 };
 
 class Datac : public Data{
 public:
     string data;
-    Datac(string c):data(c){
-        type = c.length();
-    };
-    Datac(const Datac& otherDatac){
-        type=otherDatac.type;
-        data=otherDatac.data;
-    }
+    Datac(){}
+    Datac(string c);
+    Datac(const Datac& otherDatac);
     ~Datac(){}
 };
 
@@ -70,24 +60,14 @@ class Tuple{
 public:
     vector<Data*> data; //data for each attribute
 public:
-    Tuple(){};
+    Tuple(){}
     Tuple(const Tuple& t);
     ~Tuple();
-    /*
-    int length() const{
-        return (int)data.size();
-    }//return the number of the data.
-    
-    void addData(Data* d){
-        data.push_back(d);
-    }//add a new data to the tuper.
-    
+
+    int GetNum() const ;//return the number of the data.
+    void AddData(Data* tmp) ;//add a new data to the tuple.
+    void ShowTuple() const;
     Data* operator[](unsigned short i);
-    //return the pointer to a specified data item.
-    
-    void disptuple();
-    //display the data in the tuper.
-    */
 };
 class Table{
 public:
@@ -97,10 +77,27 @@ public:
     int primary_index; //the index of primary key. -1 means no primary key.
     int blockNum;      //total number of blocks occupied in data file;
     Index index;
+
+    Table(){}
+    Table(string _TableName,Attribute _attr,int _blockNum);
+    Table(const Table& tmp);
+    ~Table();
+
+    Attribute GetAttribute() const;
+    Index GetIndex() const;
+    string GetTableName() const;
+    int GetAttrNum() const;
+    int GetTupleNum() const;
+    void AddIndex(int _AttrIndex,string _IndexName);
+    void DropIndex(string _IndexName);
+    void CopyIndex(Index otherIndex);
+    void SetPrimary(int _primary_index);
+    void ShowTable() const;
+    void AddTuple(Tuple* NewTuple);
+    int DataSize() const;
 };
 
-typedef enum{
-    eq,leq,l,geq,g,neq} WHERE;
+typedef enum{eq,leq,l,geq,g,neq} WHERE;
 
 struct where{
     int AttrIndex;
@@ -108,10 +105,15 @@ struct where{
     WHERE flag;
 };
 
-struct Index{
-    int num;
-    short location[10];
-    string indexname[10];
+
+class TableException: public exception{
+public:
+    TableException(string s):text(s){}
+    string what(){
+        return text;
+    }
+private:
+    string text;
 };
 
 struct Pos{

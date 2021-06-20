@@ -2,7 +2,7 @@
 #define Index_h
 #include "Structure.h"
 using namespace std;
-
+/*
 class IndexManager{
 public:
 	IndexManager(){};
@@ -14,5 +14,12 @@ public:
 	int*Range(string FileName, Data*key1, Data*key2);
 	~IndexManager(){};
 };
-
+*/
+class IndexManager{
+public:
+    IndexManager();
+	~IndexManager();
+	void CreateIndex(Table& TableInf,Index& IndexInf);
+	void 
+};
 #endif

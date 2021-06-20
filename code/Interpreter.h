@@ -5,7 +5,7 @@
 #include "API.h"
 #include "Catalog.h"
 /********************************
- * 创建表：create table t1(tid int, tname char(8));
+ * 创建表：create table t1(tid int, tname char(8)); 
  * 删除表：drop table t1;
  * 创建索引：create index T1 on t1(tid);
  * 删除索引：drop index T1 on t1;
@@ -38,6 +38,13 @@ public:
     void Exit();
 
 };
+/*
+try{
+
+}
+catch{
+}
+*/
 class QueryException:public exception{
 public:
     QueryException(string s):text(s){}
@@ -48,3 +55,5 @@ private:
     string text;
 };
 #endif
+
+//throw QueryException("");

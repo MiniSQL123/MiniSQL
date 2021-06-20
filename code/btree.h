@@ -13,14 +13,13 @@ enum nodetype{ Internal, Leaf };
 extern BufferManager bf;
 class Tree{
 public:
-	int Number;
-	int keylength[3];
-	
+	int Number;//记录当前index文件结点数目
+	int keylength[3];//对应三种类型的键值：int float string
 private:
-	int maxchild;
-	int order;
-	int type;//0 int; 1 double; 2 string
-	string name;
+	int maxchild;//b+树的最大儿子个数
+	int order;   //阶数
+	int type;    //0 int; 1 float; 2 char
+	string name; //index文件名
 public:
 	Tree(string filename);
 	~Tree(){};

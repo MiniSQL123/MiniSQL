@@ -26,8 +26,9 @@ public:
 class CatalogManager{
 public:
     void CreateTable(Table& inTable);
-    void DropTable(Table& inTable);
+    //void DropTable(Table& inTable);
     bool hasTable(string TableName);
+    bool hasIndex(string IndexName);
     Table* getTable(string TableName);
     void CreateIndex(string TableName, string AttrName, string IndexName);
     void DropTable(string TableName);
