@@ -1,0 +1,7 @@
+create table test(
+    id char(10),
+    name char(3),
+    age int,
+    gpa float,
+    primary key(id)
+);

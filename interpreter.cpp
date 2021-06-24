@@ -134,7 +134,7 @@ void Interpreter::EXEC(){
         std::cout<<">>> Error: unique conflict!"<<std::endl;
     }
     catch(exit_command error){
-        std::cout<<">>> Bye bye~"<<std::endl;
+        std::cout<<">>> Exit"<<std::endl;
         exit(0);
     }
     catch(...){
@@ -191,6 +191,10 @@ void Interpreter::EXEC_EXIT(){
 }
 
 void Interpreter::EXEC_FILE(){
+    //std::cout<<"******"<<query<<"*****"<<std::endl;
+    //std::cout<<check_index<<std::endl;
+    //std::cout<<"***"<<query[check_index+1]<<"***"<<std::endl;
+    //std::cout<<"***"<<file_path<<"***"<<std::endl;
     int check_index=0;
     int start_index=0;
     std::string tmp_query;
@@ -203,7 +207,7 @@ void Interpreter::EXEC_FILE(){
     //创建个文件流对象,并打开
     std::fstream fs(file_path);
     //创建字符串流对象
-    std::stringstream ss;
+    /*std::stringstream ss;
     //把文件流中的字符输入到字符串流中
     ss<<fs.rdbuf();
     //获取流中的字符串
@@ -219,6 +223,31 @@ void Interpreter::EXEC_FILE(){
         Normalize();
         EXEC();
     }while (tmp_query[check_index]!='\0');
+    */
+    int end=0;
+    int count=0;
+    while(!fs.eof()){
+        query.clear();
+        ++count;
+        std::cout<<count<<": "<<std::endl;
+        std::string tmp;
+        //得到一行的所有字符，当最后一个字符为分号时结束
+        do{
+            if(fs.eof()){
+                end=1;
+                break;
+            }
+            getline(fs,tmp);
+            query+=tmp;
+            query+=' ';
+        }while(tmp[tmp.length()-1]!=';');
+        if(end==1) break;
+        //在最后补一个结尾标识符
+        query[query.length()-2]='\0';
+        //调用Normalize进行字符串的规范化
+        Normalize();
+        EXEC();
+    }
 }
 
 void Interpreter::EXEC_SHOW(){
