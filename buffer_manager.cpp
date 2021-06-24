@@ -157,6 +157,9 @@ int BufferManager::loadDiskBlock(int page_id , std::string file_name , int block
     Frames[page_id].setDirty(false);
     Frames[page_id].setRef(true);
     Frames[page_id].setAvaliable(false);
+    //
+    //if(page_id==2) 
+    //std::cout<<page_id<<"    "<<file_name<<std::endl;
     return 0;
 }
 
