@@ -1,5 +1,5 @@
 #include "interpreter.h"
-
+#include<ctime>
 Interpreter::Interpreter(){
 }
 
@@ -191,6 +191,7 @@ void Interpreter::EXEC_EXIT(){
 }
 
 void Interpreter::EXEC_FILE(){
+    clock_t start = clock();
     //std::cout<<"******"<<query<<"*****"<<std::endl;
     //std::cout<<check_index<<std::endl;
     //std::cout<<"***"<<query[check_index+1]<<"***"<<std::endl;
@@ -224,7 +225,7 @@ void Interpreter::EXEC_FILE(){
         EXEC();
     }while (tmp_query[check_index]!='\0');
     */
-    int end=0;
+    int end_tag=0;
     int count=0;
     while(!fs.eof()){
         query.clear();
@@ -234,20 +235,22 @@ void Interpreter::EXEC_FILE(){
         //得到一行的所有字符，当最后一个字符为分号时结束
         do{
             if(fs.eof()){
-                end=1;
+                end_tag=1;
                 break;
             }
             getline(fs,tmp);
             query+=tmp;
             query+=' ';
         }while(tmp[tmp.length()-1]!=';');
-        if(end==1) break;
+        if(end_tag==1) break;
         //在最后补一个结尾标识符
         query[query.length()-2]='\0';
         //调用Normalize进行字符串的规范化
         Normalize();
         EXEC();
     }
+    clock_t end = clock();
+    std::cout << "cost " << (double)(end - start) / CLOCKS_PER_SEC << " s" << std::endl;
 }
 
 void Interpreter::EXEC_SHOW(){

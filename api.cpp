@@ -116,9 +116,11 @@ bool API::createIndex(std::string table_name, std::string index_name, std::strin
 			break;
 		}
 	}
-	index.createIndex(file_path, type);
+   
+	index.createIndex(file_path, type); 
+    
 	record.createIndex(index , table_name, attr_name);
-
+std::cout<<"****"<<std::endl;
 	return true;
 }
 //输入：表名，索引名
