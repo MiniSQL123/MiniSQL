@@ -1,11 +1,3 @@
-//
-//  bplustree.h
-//  bplustree
-//
-//  Created by Xw on 2017/5/31.
-//  Copyright © 2017年 Xw. All rights reserved.
-//
-
 #ifndef _BPLUSTREE_H_
 #define _BPLUSTREE_H_ 1
 
@@ -24,127 +16,71 @@
 using namespace std;
 extern BufferManager buffer_manager;
 
-//模板类TreeNode，用于存放B+树的结点数据以及进行相关的操作
-//使用模板类保证直接适配int，float, string三种类型数据
-//减少代码规模
+//模板类Node，直接适配int，float, string
 template <typename T>
-class TreeNode {
+class Node {
 public:
-	//该结点内key数量
-    unsigned int num;
-	//指向父节点指针
-    TreeNode* parent;
-	//存放key容器
+    unsigned int key_num;
+    Node* parent;
     std::vector <T> keys;
-	//指向子结点的指针容器
-    std::vector <TreeNode*> childs;
+    std::vector <Node*> children;// 指向子结点的指针容器
     std::vector <int> vals;
-	//指向下一个叶结点的指针
-    TreeNode* nextLeafNode;
-    //此结点是否是叶结点的标志
-    bool isLeaf;
-	//此树的度
-    int degree;
+    Node* next_leaf;// 指向下一个叶结点的指针
+    bool is_leaf;
+    int degree;// degree of tree
 
 public:
-	//构造函数
-	//输入：树的度，是否为叶结点
-    //功能：初始化一个新的结点，若Leaf=true则创建一个叶结点，否则创建一个枝干结点
-    TreeNode(int in_degree, bool Leaf = false);
-	//析构函数
-    ~TreeNode();
-    //功能：判断是否为根结点
+    Node(int in_degree, bool Leaf = false);
+    ~Node(){  };
     bool isRoot();
-	//输入：key值，(index)
-    //输出：bool
-    //功能：判断结点内是否存在某key值，并通过index引用返回该值index
-    //并通过函数返回bool值说明是否找到
     bool findKey(T key, unsigned int &index);
-    //输出：TreeNode指针
-    //功能：将一个结点分裂成两个结点(与B+树的分裂有关)
-	//新结点为本结点的下一个结点
-    //同时功过key引用返回去到上层的key值
-    TreeNode* splitNode(T &key);
-	//输入：key值
-    //输出：添加的position
-    //功能：在枝干结点中添加key值，并返回添加的位置
+    //返回Node指针；将一个结点分裂成两个结点，新结点为本结点的下一个结点
+    //同时通过key引用返回上层需要更新的Key
+    Node* splitNode(T &key);
+    // 返回添加的position
     unsigned int addKey(T &key);
-	//输入：key值
-    //输出：添加的position
-    //功能：在叶结点中添加key值，并返回添加的位置
+    //返回添加的position
+    //val是block_id，由外部提供
     unsigned int addKey(T &key, int val);
-	//输入：key值对应的index
-    //输出：bool
-    //功能：在结点中删除index对应的key值
+	//index是指key值对应的index
     bool deleteKeyByIndex(unsigned int index);
-    //返回下一个相邻叶结点指针
-    TreeNode* nextLeaf();
-    //输入:起始index,终止key，返回结果vector容器
-    //输出:到达终止key返回true，否则返回flase
-    //功能：返回一定范围的value容器
-    bool findRange(unsigned int index, T& key, std::vector<int>& vals);
-    bool findRange2(unsigned int index, std::vector<int>& vals);
-    
-    void printl();
+    //返回指定范围的values
+        // 从Index开始，返回<Key的values
+    bool findRangeIndexKey(unsigned int index, T& key, std::vector<int>& vals);
+        // 从Index开始，返回Index之后的所有values
+    void findRangeAfterIndex(unsigned int index, std::vector<int>& vals);
 };
 
-//模板类BPlusTree，用于对整个B+树的操作
-//由此模块操作TreeNode模块，并且由此模块与buffer_manager模块进行交互
-//完成文件的读写操作
 template <typename T>
 class BPlusTree {
 private:
-	//重命名TreeNode指针，方便后边进行操作区分
-    typedef TreeNode<T>* Tree;
-	//特殊结构，用于临时存储查找的key值及所处的位置，方便进行操作
-    struct searchNodeParse {
+    typedef Node<T>* Tree;
+    struct nodePos { // 用于定位某个key
         Tree pNode; //包含对应key的结点指针
         unsigned int index; //key在结点中的index
-        bool ifFound; //是否找到该key
+        bool is_found; //是否找到该key
     };
 
 private:
-	//文件名，用于文件读写操作
-    std::string file_name;
-	//根结点指针
+    std::string file_name; // 文件名，用于与buffer交互；创建索引文件等。
     Tree root;
-	//叶结点的左部头指针
-    Tree leafHead;
-	//此树key的数量
+    Tree first_leaf;// 叶结点的左部头指针
     unsigned int key_num;
-	//此树的level数量
     unsigned int level;
-	//此树的node数量
     unsigned int node_num;
-    //fileNode* file; // the filenode of this tree
-	//每个key值的size，对于一颗树来说，所有key的size应是相同的
     int key_size;
-	//树的度
     int degree;
 
 public:
-	//构造函数
-	//用于构造一颗新的树，确定m_name,key的size，树的度
-	//同时调用其他函数为本树分配内存
     BPlusTree(std::string m_name, int key_size, int degree);
-	//析构函数
-	//释放相应的内存
     ~BPlusTree();
 
-	//根据key值返回对应的Value
-    int searchVal(T &key);
-	//输入：key值及其value
-    //输出：bool
-    //功能：在树中插入一个key值
-	//返回是否插入成功
+    int findValue(T &key);
+	// 返回：是否插入成功
     bool insertKey(T &key, int val);
-	//输入：key值
-    //输出：bool
-    //功能：在树中删除一个key值
-	//返回是否删除成功
+	// 返回：是否删除成功
     bool deleteKey(T &key);
-	//输入：树的根结点
-    //功能：删除整棵树并释放内存空间，主要用在析构函数中
+	// 输入树的根结点，递归地释放内存
     void dropTree(Tree node);
     //输入：key1，key2，返回vals的容器
     //功能：返回范围搜索结果，将value放入vals容器中
@@ -156,327 +92,230 @@ public:
     void writtenbackToDiskAll();
 	//在磁盘中读取某一块的数据
     void readFromDisk(char *p, char* end);
-    
-    void printleaf();
 
 private:
-	//初始化B+树，并分配内存空间
-    void initTree();
-	//用于插入某key后结点满情况，对整棵树进行调整
-    bool adjustAfterinsert(Tree pNode);
-	//用于删除某key后可能出现结点空情况，对整棵树进行调整
-    bool adjustAfterDelete(Tree pNode);
-	//用于查找某key值所处的叶结点位置
-    void findToLeaf(Tree pNode, T key, searchNodeParse &snp);
+    void initTree();// 分配内存
+    bool insertMaintain(Tree pNode);// insert某key后结点满情况
+    bool deleteMaintain(Tree pNode);// delete某key后可能出现结点空情况
+    void findLeaf(Tree pNode, T key, nodePos &snp);
     //获取文件大小
-    void getFile(std::string file_path);
+    void getFile(std::string file_path);// 创建对应文件
     int getBlockNum(std::string table_name);
 };
 
 template <class T>
-TreeNode<T>::TreeNode(int in_degree, bool Leaf):
-	num(0),
+Node<T>::Node(int in_degree, bool Leaf):
+	key_num(0),
 	parent(NULL),
-	nextLeafNode(NULL),
-	isLeaf(Leaf),
+	next_leaf(NULL),
+	is_leaf(Leaf),
 	degree(in_degree)
-{   // MY-NOTES: 最大能存到degree+1个key, vals; 最大能存到degree+2个pointer
-    // MY-NOTES: degree都记的是基数，实际能存x个key，其中x都是偶数
+{   // 最大能存到degree+1个key, vals; 最大能存到degree+2个pointer
+    // degree都记的是基数，实际能存x个key，其中x都是偶数
     for (unsigned i = 0; i < degree+1; i++) { 
-        // MY-NOTES 这里的i < degree+1的+1是预留给“爆了”的结点进行调整的
-        childs.push_back(NULL);
+        // 这里的i < degree+1的+1是预留给“爆了”的结点进行调整的
+        children.push_back(NULL);
         keys.push_back(T());
         vals.push_back(int());
     }
-
-    childs.push_back(NULL);
+    children.push_back(NULL);
 }
 
-//析构函数使用默认析构函数即可
 template <class T>
-TreeNode<T>::~TreeNode()
+bool Node<T>::isRoot()
 {
-
+    if(!parent)return false;
+    else return true;
 }
 
-//功能：判断是否为根结点
-template <class T>
-bool TreeNode<T>::isRoot()
-{
-    if (parent != NULL)
-		return false;
-    else
-		return true;
-}
-
-//输入：key值，(index)
-//输出：bool
-//功能：判断结点内是否存在某key值，并通过index引用返回该值index
 //如不存在，则返回最接近的index
-//并通过函数返回bool值说明是否找到
+//函数返回bool值说明是否找到
 template <class T>
-bool TreeNode<T>::findKey(T key, unsigned int &index)
+bool Node<T>::findKey(T key, unsigned int &index)
 {
-    if (num == 0) { //结点内key数量为0
+    if (key_num == 0) { //结点内key数量为0
         index = 0;
         return false;
     } else {
-        //判断key值是否超过本结点内最大值(key不在本结点内)
-        if (keys[num-1] < key) {
-            index = num;
+        if (keys[key_num-1] < key) { // key是否超出最大值
+            index = key_num;
             return false;
-		//判断key值是否小于本结点内最小值(key不在本结点内)
-        } else if (keys[0] > key) {
+        } else if (keys[0] > key) { // key是否小于最小值
             index = 0;
             return false;
-        } else if (num <= 20) {
-		//结点内key数量较少时直接线性遍历搜索即可
-            for (unsigned int i = 0; i < num; i++) {
-                if (keys[i] == key) {
-                    index = i;
-                    return true;
-                } else if (keys[i] < key)
-                    continue;
-                else if(keys[i] > key) {
-                    index = i;// 返回最接近的index
-                    return false;
-                }
-            }
-        } else if(num > 20) {
-		//结点内key数量过多时采用二分搜索
-            unsigned int left = 0, right = num-1, pos = 0;
+        } else {
+		// 可能存在，二分搜索
+            unsigned int low = 0, high = key_num-1, mid = 0;
 
-            while (right > left+1) {
-                pos = (right + left) / 2;
-                if (keys[pos] == key) {
-                    index = pos;
+            while (high > low+1) {
+                mid = (high + low) / 2;
+                if (keys[mid] == key) {
+                    index = mid;
                     return true;
-                } else if (keys[pos] < key) {
-                    left = pos;
-                } else if (keys[pos] > key) {
-                    right = pos;
+                } else if (keys[mid] < key) {
+                    low = mid;
+                } else if (keys[mid] > key) {
+                    high = mid;
                 }
             }
-            // MY-NOTES: 没找到情况必然是left+1==right
-            if (keys[left] >= key) {
-                index = left;
-                return (keys[left] == key);// TODO 但如果是==的话，不是应该到children[left+1]里去找吗--是的，就是这样
-            } else if (keys[right] >= key) {
-                index = right;
-                return (keys[right] == key);
-            } else if(keys[right] < key) {
-                index = right ++;// TODO 这里不应该是++right吗。。【我觉得就是++right!
+            // 没找到情况必然是low+1 == high
+            if (keys[low] >= key) {
+                index = low;
+                return (keys[low] == key);// 如果是==的话，后续函数应该到children[low+1]里去找
+            } else if (keys[high] >= key) {
+                index = high;
+                return (keys[high] == key);
+            } else if(keys[high] < key) {
+                index = ++ high;// TODO 这里不应该是++high吗。。【我觉得就是++high!
                 return false;
             }
         }//二分搜索结束
     }
-
     return false;
 }
 
-//输出：TreeNode指针
-//功能：将一个结点分裂成两个结点(与B+树的分裂有关)
-//新结点为本结点的下一个结点
-//同时功过key引用返回去到上层的key值
+// 新结点为本结点的下一个结点，通过key引用返回去到上层的key值
 template <class T>
-TreeNode<T>* TreeNode<T>::splitNode(T &key)
+Node<T>* Node<T>::splitNode(T &key)
 {
-	//最小结点数量
-    unsigned int minmumNodeNum = (degree - 1) / 2; // MY-NOTES: 相当于取下整
-	//创建新结点
-    TreeNode* newNode = new TreeNode(degree, this->isLeaf);
+    unsigned int min_node_num = (degree - 1) / 2; // 相当于取下整
+    Node* new_node = new Node(degree, this->is_leaf);
 
-	/*
-    if (newNode == NULL) {
-        cout << "Problems in allocate momeory of TreeNode in splite node of " << key << endl;
-        exit(2);
-    }
-	*/
-
-	//当前结点为叶结点情况
-    if (isLeaf) {
-        key = keys[minmumNodeNum + 1];
-		//将右半部分key值拷贝至新结点内
-        // MY-NOTES: 新结点持有min_node_num个Key或者val
-        for (unsigned int i = minmumNodeNum + 1; i < degree; i++) {
-            newNode->keys[i-minmumNodeNum-1] = keys[i];
+    if (is_leaf) {
+        key = keys[min_node_num + 1];
+        // 新结点持有min_node_num个Key或者val
+        for (unsigned int i = min_node_num + 1; i < degree; i++) {
+            new_node->keys[i-min_node_num-1] = keys[i];
             keys[i] = T();
-            newNode->vals[i-minmumNodeNum-1] = vals[i];
+            new_node->vals[i-min_node_num-1] = vals[i];
             vals[i] = int();
         }
-		//将新结点放置到本结点右边
-        newNode->nextLeafNode = this->nextLeafNode;
-        this->nextLeafNode = newNode;
-        newNode->parent = this->parent;
+		// 新结点为本结点的下一个结点
+        new_node->next_leaf = this->next_leaf;
+        this->next_leaf = new_node;
+        new_node->parent = this->parent;
 
-		//调整两结点内key数量
-        newNode->num = minmumNodeNum;
-        this->num = minmumNodeNum + 1;// TODO 为什么是+1呢
-    } else if (!isLeaf) {  //非叶结点情况
-        key = keys[minmumNodeNum];
-		//拷贝子结点指针至新结点
-        // MY-NOTES: 新结点存有min_node_num个结点
-        for (unsigned int i = minmumNodeNum + 1; i < degree+1; i++) {
-            newNode->childs[i-minmumNodeNum-1] = this->childs[i];
-            newNode->childs[i-minmumNodeNum-1]->parent = newNode;
-            this->childs[i] = NULL;
+        new_node->key_num = min_node_num;
+        this->key_num = min_node_num + 1;// TODO 为什么是+1呢
+    } else if (!is_leaf) {  //非叶结点情况
+        key = keys[min_node_num];
+        // 新结点存有min_node_num个结点
+        for (unsigned int i = min_node_num + 1; i < degree+1; i++) {
+            new_node->children[i-min_node_num-1] = this->children[i];
+            new_node->children[i-min_node_num-1]->parent = new_node;
+            this->children[i] = NULL;
         }
-		//拷贝key值至新结点
-        for (unsigned int i = minmumNodeNum + 1; i < degree; i++) {
-            newNode->keys[i-minmumNodeNum-1] = this->keys[i];
+		// 拷贝key值至新结点
+        for (unsigned int i = min_node_num + 1; i < degree; i++) {
+            new_node->keys[i-min_node_num-1] = this->keys[i];
             this->keys[i] = T();
         }
-		//调整结点相互位置关系
-        this->keys[minmumNodeNum] = T();
-        newNode->parent = this->parent;
+		// 调整结点相互位置关系
+        this->keys[min_node_num] = T();
+        new_node->parent = this->parent;
 
-		//调整结点内key数量
-        newNode->num = minmumNodeNum;
-        this->num = minmumNodeNum;
+        new_node->key_num = min_node_num;
+        this->key_num = min_node_num;
     }
-
-    return newNode;
+    return new_node;
 }
 
-//输入：key值
-//输出：添加的position
-//功能：在枝干结点中添加key值，并返回添加的位置
+// 在枝干结点中添加key值，并返回添加的位置
 template <class T>
-unsigned int TreeNode<T>::addKey(T &key)
+unsigned int Node<T>::addKey(T &key)
 {
-	//本结点内无key
-    if (num == 0) {
+    if (key_num == 0) {
         keys[0] = key;
-        num ++;
+        key_num ++;
         return 0;
     } else {
-		//查找是否Key值已经存在
         unsigned int index = 0;
-        bool exist = findKey(key, index);
-        if (exist) {
-			/*
-            cout << "Error:In add(T &key),key has already in the tree!" << endl;
-            exit(3);
-			*/
-        } else { //不存在，可以进行插入
-			//调整其他key值
-            for (unsigned int i = num; i > index; i--)
+
+        if(!findKey(key, index)){ // 不存在重复key
+			// 挪位置
+            for (unsigned int i = key_num; i > index; i--)
                 keys[i] = keys[i-1];
             keys[index] = key;
 
-			//调整子结点指针情况
-            for (unsigned int i = num + 1; i > index+1; i--)
-                childs[i] = childs[i-1];
-            childs[index+1] = NULL;
-            num++;
+			// 子结点指针
+            for (unsigned int i = key_num + 1; i > index+1; i--)
+                children[i] = children[i-1];
+            children[index+1] = NULL;
+            key_num++;
 
-            return index;
+            return index;            
         }
     }
-
     return 0;
 }
 
-//输入：key值
-//输出：添加的position
-//功能：在叶结点中添加key值，并返回添加的位置
+// 在叶结点中添加key值，并返回添加的位置
 template <class T>
-unsigned int TreeNode<T>::addKey(T &key, int val)
-{	//若非叶结点，无法插入
-    if (!isLeaf) {
-		/*
-        cout << "Error:add(T &key,int val) is a function for leaf nodes" << endl;
-		*/
-        return -1;
-    }
+unsigned int Node<T>::addKey(T &key, int val)
+{	
+    if (!is_leaf) return -1;
 
-	//结点内没有key值
-    if (num == 0) {
+    if (key_num == 0) {
         keys[0] = key;
         vals[0] = val;
-        num ++;
+        key_num ++;
         return 0;
     } else { //正常插入
         unsigned int index = 0;
-        bool exist = findKey(key, index);
-        if (exist) {
-			/*
-	        cout << "Error:In add(T &key, int val),key has already in the tree!" << endl;
-	        exit(3);
-			*/
-        } else {
+        if(!findKey(key, index)){
 			//逐个调整key值
-            for (unsigned int i = num; i > index; i--) {
+            for (unsigned int i = key_num; i > index; i--) {
                 keys[i] = keys[i-1];
                 vals[i] = vals[i-1];
             }
             keys[index] = key;
             vals[index] = val;
-            num++;
+            key_num++;
             return index;
         }
     }
-
     return 0;
 }
 
-//输入：key值对应的index
-//输出：bool
-//功能：在结点中删除index对应的key值
+//在结点中删除index对应的key值。返回值：是否删除成功。
 template <class T>
-bool TreeNode<T>::deleteKeyByIndex(unsigned int index)
+bool Node<T>::deleteKeyByIndex(unsigned int index)
 {
-	//index错误，超过本结点范围
-    if(index > num) {
-		/*
-        cout << "Error:In removeAt(unsigned int index), index is more than num!" << endl;
-		*/
-        return false;
-    } else { //正常进行删除
-        if (isLeaf) { //叶结点情况
-			//逐个调整key值
-            for (unsigned int i = index; i < num-1; i++) {
+    if(index > key_num) return false;
+    else {
+        if (is_leaf) { // leaf
+            for (unsigned int i = index; i < key_num-1; i++) {
                 keys[i] = keys[i+1];
                 vals[i] = vals[i+1];
             }
-            keys[num-1] = T();
-            vals[num-1] = int();
-        } else { //枝干结点情况
+            keys[key_num-1] = T();
+            vals[key_num-1] = int();
+        } else { // internal
 			//调整key值
-            for(unsigned int i = index; i < num-1; i++)
+            for(unsigned int i = index; i < key_num-1; i++)
                 keys[i] = keys[i+1];
 
 			//调整子结点指针
-            for(unsigned int i = index+1;i < num;i ++)
-                childs[i] = childs[i+1];
+            for(unsigned int i = index+1;i < key_num;i ++)
+                children[i] = children[i+1];
 
-            keys[num-1] = T();
-            childs[num] = NULL;
+            keys[key_num-1] = T();
+            children[key_num] = NULL;
         }
 
-        num--;
+        key_num--;
         return true;
     }
-
     return false;
 }
 
-//返回下一个相邻叶结点指针
+// 起始index,终止key，返回结果vector容器
 template <class T>
-TreeNode<T>* TreeNode<T>::nextLeaf()
-{
-	return nextLeafNode;
-}
-
-//输入，起始index,终止key，返回结果vector容器
-//输出:到达终止key返回true，否则返回flase
-//功能：返回一定范围的value容器
-template <class T>
-bool TreeNode<T>::findRange(unsigned int index, T& key, std::vector<int>& valsout)
+bool Node<T>::findRangeIndexKey(unsigned int index, T& key, std::vector<int>& vals_output)
 {
 	unsigned int i;
-	for (i = index; i < num && keys[i] <= key; i++)
-		valsout.push_back(vals[i]);
+	for (i = index; i < key_num && keys[i] <= key; i++)
+		vals_output.push_back(vals[i]);
 
 	if (keys[i] >= key)
 		return true;
@@ -485,21 +324,16 @@ bool TreeNode<T>::findRange(unsigned int index, T& key, std::vector<int>& valsou
 }
 
 template <class T>
-bool TreeNode<T>::findRange2(unsigned int index, std::vector<int>& valsout)
+void Node<T>::findRangeAfterIndex(unsigned int index, std::vector<int>& vals_output)
 {
 	unsigned int i;
-	for (i = index; i < num; i++)
-		valsout.push_back(vals[i]);
-
-	return false;
+	for (i = index; i < key_num; i++)
+		vals_output.push_back(vals[i]);
 }
 
-/*   Class   BPlusTree   */
 
-//构造函数
-//用于构造一颗新的树，确定m_name,key的size，树的度
-//初始化各个变量
-//同时调用其他函数为本树分配内存
+
+
 template <class T>
 BPlusTree<T>::BPlusTree(std::string in_name, int keysize, int in_degree):
 	file_name(in_name),
@@ -507,18 +341,14 @@ BPlusTree<T>::BPlusTree(std::string in_name, int keysize, int in_degree):
 	level(0),
 	node_num(0),
 	root(NULL),
-	leafHead(NULL),
+	first_leaf(NULL),
 	key_size(keysize),
 	degree(in_degree)
 {
-	//初始化分配内存并从磁盘读取数据
-	//创建索引
     initTree();
     readFromDiskAll();
 }
 
-//析构函数
-//释放相应的内存
 template <class T>
 BPlusTree<T>:: ~BPlusTree()
 {
@@ -528,129 +358,111 @@ BPlusTree<T>:: ~BPlusTree()
     level = 0;
 }
 
-//初始化B+树，并分配内存空间
 template <class T>
 void BPlusTree<T>::initTree()
 {
-    root = new TreeNode<T>(degree, true);
+    root = new Node<T>(degree, true);
     key_num = 0;
     level = 1;
     node_num = 1;
-    leafHead = root;
+    first_leaf = root;
 }
 
-//用于查找某key值所处的叶结点位置
-// TODO 这里为什么会给个Tree pNode参数？
+//用于查找某key值所处的叶结点位置。可能递归
 template <class T>
-void BPlusTree<T>::findToLeaf(Tree pNode, T key, searchNodeParse &snp)
+void BPlusTree<T>::findLeaf(Tree pNode, T key, nodePos &np)
 {
     unsigned int index = 0;
 	//在对应结点内查找key值
     if (pNode->findKey(key, index)) {
 		//若此结点是叶结点，则查找成功
-        if (pNode->isLeaf) {
-            snp.pNode = pNode;
-            snp.index = index;
-            snp.ifFound = true;
+        if (pNode->is_leaf) {
+            np.pNode = pNode;
+            np.index = index;
+            np.is_found = true;
         } else {
 			//此结点不是子结点，查找它的下一层
-            // 注意是index+1，配合node->findKey来看，找到的时候就应该用index+1继续查
-            pNode = pNode->childs[index+1];
-            while (!pNode->isLeaf) {
-                pNode = pNode->childs[0];
+            // 注意是index+1，配合node->findKey，返回为true的时候就应该用index+1继续查
+            pNode = pNode->children[index+1];
+            while (!pNode->is_leaf) {
+                pNode = pNode->children[0];
             }
-			//因为已找到key值，所以其最底层叶结点index[0]即为该key
-            // 确实 写得挺好
-            snp.pNode = pNode;
-            snp.index = 0;
-            snp.ifFound = true;
+			// 因为已找到key值，所以其最底层叶结点index[0]即为该key
+            np.pNode = pNode;
+            np.index = 0;
+            np.is_found = true;
         }
 
     } else { //本结点内未找到该key
-        if (pNode->isLeaf) {
+        if (pNode->is_leaf) {
 			//若此结点已经是叶结点则查找失败
-            snp.pNode = pNode;
-            snp.index = index;
-            snp.ifFound = false;
+            np.pNode = pNode;
+            np.index = index;
+            np.is_found = false;
         } else {
 			//递归寻找下一层
-            findToLeaf(pNode->childs[index], key, snp);// 返回最接近的index是在这里用到的
+            findLeaf(pNode->children[index], key, np);// 在此需要配合node->findKey所返回的最接近的index
         }
     }
-
 	return;
 }
 
-//输入：key值及其value
-//输出：bool
-//功能：在树中插入一个key值
 //返回是否插入成功
 template <class T>
 bool BPlusTree<T>::insertKey(T &key, int val)
 {
-    searchNodeParse snp;
-	//根结点不存在
+    nodePos np;
     if (!root)
 		initTree();
 	//查找插入值是否存在
-    findToLeaf(root, key, snp);
-    if (snp.ifFound) { //已存在 // TODO 如果已存在的话，不应该是看val决定更不更新val吗？
-		/*
-        cout << "Error:in insert key to index: the duplicated key!" << endl;
-		*/
+    findLeaf(root, key, np);
+    if (np.is_found) { //已存在
         return false;
     } else { //不存在，可以插入
-        snp.pNode->addKey(key, val);
+        np.pNode->addKey(key, val);
 		//插入后结点满，需要进行调整
-        if (snp.pNode->num == degree) {
-            adjustAfterinsert(snp.pNode);
+        if (np.pNode->key_num == degree) {
+            insertMaintain(np.pNode);
         }
         key_num++;
         return true;
     }
-
     return false;
 }
 
 //用于插入某key后若结点满，对整棵树进行调整
 template <class T>
-bool BPlusTree<T>::adjustAfterinsert(Tree pNode)
+bool BPlusTree<T>::insertMaintain(Tree pNode)
 {
     T key;
-    Tree newNode = pNode->splitNode(key);
+    Tree new_node = pNode->splitNode(key);
     node_num++;
 
 	//当前结点为根结点情况
     if (pNode->isRoot()) {
-        Tree root = new TreeNode<T>(degree, false);
-        if (root == NULL) {
-			/*
-            cout << "Error: can not allocate memory for the new root in adjustAfterinsert" << endl;
-            exit(1);
-			*/
-        } else {
+        Tree root = new Node<T>(degree, false);
+        if(root){
             level ++;
             node_num ++;
             this->root = root;
             pNode->parent = root;
-            newNode->parent = root;
+            new_node->parent = root;
             root->addKey(key);
-            root->childs[0] = pNode;
-            root->childs[1] = newNode;
+            root->children[0] = pNode;
+            root->children[1] = new_node;
             return true;
         }
     } else { //当前结点非根结点
         Tree parent = pNode->parent;
         unsigned int index = parent->addKey(key);
 
-        parent->childs[index+1] = newNode;
-        newNode->parent = parent;
+        parent->children[index+1] = new_node;
+        new_node->parent = parent;
 		//递归进行调整
-        if(parent->num == degree)// MY-NOTES 等于degree的时候是已经爆了而不是已经满了
+        if(parent->key_num == degree)// 等于degree的时候是已经爆了而不是已经满了
             // TODO 我怀疑是最初getDegree定义的时候定义错了。
             // 因为getDegree算出来的，对应书上的其实是N-1而不是N
-            return adjustAfterinsert(parent);
-
+            return insertMaintain(parent);
         return true;
     }
 
@@ -658,72 +470,61 @@ bool BPlusTree<T>::adjustAfterinsert(Tree pNode)
 }
 
 template <class T>
-int BPlusTree<T>::searchVal(T& key)
+int BPlusTree<T>::findValue(T& key)
 {
     if (!root)
         return -1;
-    searchNodeParse snp;
-    findToLeaf(root, key, snp);
+    nodePos np;
+    findLeaf(root, key, np);
 
-    if (!snp.ifFound)
-        return -1;
-    else
-        return snp.pNode->vals[snp.index];
+    if (!np.is_found) return -1;
+    else return np.pNode->vals[np.index];
 }
 
-//输入：key值
-//输出：bool
-//功能：在树中删除一个key值
 //返回是否删除成功
 template <class T>
 bool BPlusTree<T>::deleteKey(T &key)
 {
-    searchNodeParse snp;
+    nodePos np;
 	//根结点不存在
-    if (!root) {
-		/*
-        cout << "ERROR: In deleteKey, no nodes in the tree " << fileName << "!" << endl;
-		*/
-        return false;
-    } else { //正常进行操作
+    if (!root) return false;
+    else { //正常进行操作
 		//查找位置
-        findToLeaf(root, key, snp);
-        if (!snp.ifFound) { //找不到该key
-			/*
-            cout << "ERROR: In deleteKey, no keys in the tree " << fileName << "!" << endl;
-			*/
-            return false;
-        } else { //正常找到进行删除
-            if (snp.pNode->isRoot()) { //当前为根结点
-                snp.pNode->deleteKeyByIndex(snp.index);
+        findLeaf(root, key, np);
+        if (!np.is_found) return false;
+        else { //正常找到进行删除
+            if (np.pNode->isRoot()) { //当前为根结点
+                np.pNode->deleteKeyByIndex(np.index);
                 key_num--;
-                return adjustAfterDelete(snp.pNode);
-            } else {// TODO 这里暂时懒得看
-                if (snp.index == 0 && leafHead != snp.pNode) {
+                return deleteMaintain(np.pNode);
+            } else {
+                if (np.index == 0 && first_leaf != np.pNode) {
+                    // TODO 为什么这种情况要独立考虑
+                    // np.index == 0意味着会影响到上层的KEY
 					//key存在于枝干结点上
 					//到上一层去更新枝干层
                     unsigned int index = 0;
 
-                    Tree now_parent = snp.pNode->parent;
-                    bool if_found_inBranch = now_parent->findKey(key, index);
-                    while (!if_found_inBranch) {
+                    Tree now_parent = np.pNode->parent;
+                    bool if_found_in_ancestors = now_parent->findKey(key, index);
+                    while (!if_found_in_ancestors) {
                         if(now_parent->parent)
                             now_parent = now_parent->parent;
                         else
                             break;
-                        if_found_inBranch = now_parent->findKey(key,index);
+                        if_found_in_ancestors = now_parent->findKey(key,index);
                     }
 
-                    now_parent -> keys[index] = snp.pNode->keys[1];
+                    now_parent -> keys[index] = np.pNode->keys[1];
 
-                    snp.pNode->deleteKeyByIndex(snp.index);
+                    np.pNode->deleteKeyByIndex(np.index);
                     key_num--;
-                    return adjustAfterDelete(snp.pNode);
+                    return deleteMaintain(np.pNode);
 
-                } else { //同时必然存在于叶结点
-                    snp.pNode->deleteKeyByIndex(snp.index);
+                } else {
+                    np.pNode->deleteKeyByIndex(np.index);
                     key_num--;
-                    return adjustAfterDelete(snp.pNode);
+                    return deleteMaintain(np.pNode);
                 }
             }
         }
@@ -732,30 +533,31 @@ bool BPlusTree<T>::deleteKey(T &key)
     return false;
 }
 
+// TODO 其实没懂为什么leaf node是min_key_num而internal node是min_key_num-1
 //用于删除某key后可能出现结点空情况，对整棵树进行调整
 template <class T>
-bool BPlusTree<T>::adjustAfterDelete(Tree pNode)
+bool BPlusTree<T>::deleteMaintain(Tree pNode)
 {
-    unsigned int minmumKeyNum = (degree - 1) / 2;
+    unsigned int min_key_num = (degree - 1) / 2;
 	//三种不需要调整的情况
-    if (((pNode->isLeaf) && (pNode->num >= minmumKeyNum)) ||
-	    ((degree != 3) && (!pNode->isLeaf) && (pNode->num >= minmumKeyNum - 1)) ||
-		((degree == 3) && (!pNode->isLeaf) && (pNode->num < 0))) {
+    // TODO 看不懂
+    if (((pNode->is_leaf) && (pNode->key_num >= min_key_num)) ||
+	    ((degree != 3) && (!pNode->is_leaf) && (pNode->key_num >= min_key_num - 1)) ||
+		((degree == 3) && (!pNode->is_leaf) && (pNode->key_num < 0))) {
         return  true;
     }
     if (pNode->isRoot()) { //当前结点为根结点
-        if (pNode->num > 0) //不需要调整
+        if (pNode->key_num > 0) //不需要调整
             return true;
-        else { //正常需要调整
-            if (root->isLeaf) { //将成为空树情况
-                delete pNode;
+        else { 
+            if (root->is_leaf) { // 根没有孩子
+                dropTree(pNode);
                 root = NULL;
-                leafHead = NULL;
+                first_leaf = NULL;
                 level--;
-                node_num--;
             }
-            else { //根节点将成为左头部
-                root = pNode -> childs[0];
+            else { // 根有一个孩子
+                root = pNode -> children[0];
                 root -> parent = NULL;
                 delete pNode;
                 level--;
@@ -764,166 +566,185 @@ bool BPlusTree<T>::adjustAfterDelete(Tree pNode)
         }
     } else { //非根节点情况
         Tree parent = pNode->parent, brother = NULL;
-        if (pNode->isLeaf) { //当前为叶节点
+        if (pNode->is_leaf) { //当前为叶节点
             unsigned int index = 0;
             parent->findKey(pNode->keys[0], index);
 
 			//选择左兄弟
-            if ((parent->childs[0] != pNode) && (index + 1 == parent->num)) {
-                brother = parent->childs[index];
-                if(brother->num > minmumKeyNum) {
-                    for (unsigned int i = pNode->num; i > 0; i--) {
+            if ((parent->children[0] != pNode) && (index + 1 == parent->key_num)) {
+                // pNode不是第一个孩子，且pNode是parent的最后一个孩子
+                // 所以pNode只能选左兄弟
+                brother = parent->children[index];
+                if(brother->key_num > min_key_num) {
+                    // brother有多余的key
+                    for (unsigned int i = pNode->key_num; i > 0; i--) {
                         pNode->keys[i] = pNode->keys[i-1];
                         pNode->vals[i] = pNode->vals[i-1];
                     }
-                    pNode->keys[0] = brother->keys[brother->num-1];
-                    pNode->vals[0] = brother->vals[brother->num-1];
-                    brother->deleteKeyByIndex(brother->num-1);
+                    // 把左兄弟最大的key移为了pNode的第一个key
+                    pNode->keys[0] = brother->keys[brother->key_num-1];
+                    pNode->vals[0] = brother->vals[brother->key_num-1];
+                    brother->deleteKeyByIndex(brother->key_num-1);
 
-                    pNode->num++;
+                    pNode->key_num++;
                     parent->keys[index] = pNode->keys[0];
                     return true;
 
                 } else {
+                    // brother刚好是min_key_num，故把pNode并入左兄弟
                     parent->deleteKeyByIndex(index);
-
-                    for (int i = 0; i < pNode->num; i++) {
-                        brother->keys[i+brother->num] = pNode->keys[i];
-                        brother->vals[i+brother->num] = pNode->vals[i];
+                    // 把pNode的所有Keys和vals都并入其左兄弟
+                    for (int i = 0; i < pNode->key_num; i++) {
+                        brother->keys[i+brother->key_num] = pNode->keys[i];
+                        brother->vals[i+brother->key_num] = pNode->vals[i];
                     }
-                    brother->num += pNode->num;
-                    brother->nextLeafNode = pNode->nextLeafNode;
+                    brother->key_num += pNode->key_num;
+                    brother->next_leaf = pNode->next_leaf;
 
                     delete pNode;
                     node_num--;
-
-                    return adjustAfterDelete(parent);
+                    // 因为删除了parent的一个index，故需要maintain parent
+                    return deleteMaintain(parent);
                 }
 
             } else {
-                if(parent->childs[0] == pNode)
-                    brother = parent->childs[1];
+                // 选右兄弟
+                if(parent->children[0] == pNode)
+                    brother = parent->children[1];
                 else
-                    brother = parent->childs[index+2];
-                if(brother->num > minmumKeyNum) {
-                    pNode->keys[pNode->num] = brother->keys[0];
-                    pNode->vals[pNode->num] = brother->vals[0];
-                    pNode->num++;
+                    brother = parent->children[index+2];
+                if(brother->key_num > min_key_num) {
+                    // 右兄弟有多余的key，把右兄弟多的key分给pNode
+                    pNode->keys[pNode->key_num] = brother->keys[0];
+                    pNode->vals[pNode->key_num] = brother->vals[0];
+                    pNode->key_num++;
                     brother->deleteKeyByIndex(0);
-                    if(parent->childs[0] == pNode)
+                    // 因为brother最小的key变了，故更新parent处的key
+                    if(parent->children[0] == pNode)
                         parent->keys[0] = brother->keys[0];
                     else
                         parent->keys[index+1] = brother->keys[0];
                     return true;
 
                 } else {
-                    for (int i = 0; i < brother->num; i++) {
-                        pNode->keys[pNode->num+i] = brother->keys[i];
-                        pNode->vals[pNode->num+i] = brother->vals[i];
+                    // 右兄弟刚好有min_key_num，故把右兄弟并入pNode
+                    for (int i = 0; i < brother->key_num; i++) {
+                        pNode->keys[pNode->key_num+i] = brother->keys[i];
+                        pNode->vals[pNode->key_num+i] = brother->vals[i];
                     }
-                    if (pNode == parent->childs[0])
+                    // 因为右兄弟将要不存在了，故更新Parent的key
+                    if (pNode == parent->children[0])
                         parent->deleteKeyByIndex(0);
                     else
                         parent->deleteKeyByIndex(index+1);
-                    pNode->num += brother->num;
-                    pNode->nextLeafNode = brother->nextLeafNode;
+                    pNode->key_num += brother->key_num;
+                    pNode->next_leaf = brother->next_leaf;
                     delete brother;
                     node_num--;
-
-                    return adjustAfterDelete(parent);
+                    // 删除了parent的一个key，故继续maintain parent
+                    return deleteMaintain(parent);
                 }
             }
 
-        } else { //枝干节点情况
+        } else { // pNode is a internal node
             unsigned int index = 0;
-            parent->findKey(pNode->childs[0]->keys[0], index);
-            if ((parent->childs[0] != pNode) && (index + 1 == parent->num)) {
-                brother = parent->childs[index];
-                if (brother->num > minmumKeyNum - 1) {
-                    pNode->childs[pNode->num+1] = pNode->childs[pNode->num];
-                    for (unsigned int i = pNode->num; i > 0; i--) {
-                        pNode->childs[i] = pNode->childs[i-1];
+            parent->findKey(pNode->children[0]->keys[0], index);
+            // 选择pNode的左兄弟
+            if ((parent->children[0] != pNode) && (index + 1 == parent->key_num)) {
+                // pNode不是first_child，且pNode是last_child
+                // 所以pNode只能找左兄弟
+                brother = parent->children[index];
+                // 左兄弟有“多余”的key
+                if (brother->key_num > min_key_num - 1) {
+                    // pNode原有的key向右移，腾出位置
+                    pNode->children[pNode->key_num+1] = pNode->children[pNode->key_num];
+                    for (unsigned int i = pNode->key_num; i > 0; i--) {
+                        pNode->children[i] = pNode->children[i-1];
                         pNode->keys[i] = pNode->keys[i-1];
                     }
-                    pNode->childs[0] = brother->childs[brother->num];
+                    // pNode接收左兄弟的last_key
+                    pNode->children[0] = brother->children[brother->key_num];
                     pNode->keys[0] = parent->keys[index];
-                    pNode->num++;
+                    pNode->key_num++;
 
-                    parent->keys[index]= brother->keys[brother->num-1];
-
-                    if (brother->childs[brother->num])
-                        brother->childs[brother->num]->parent = pNode;
-                    brother->deleteKeyByIndex(brother->num-1);
+                    // pNode所含的最小key改变，故更新parent
+                    parent->keys[index]= brother->keys[brother->key_num-1];
+                    // 更新被移交结点的father
+                    if (brother->children[brother->key_num])
+                        brother->children[brother->key_num]->parent = pNode;
+                    brother->deleteKeyByIndex(brother->key_num-1);
 
                     return true;
 
                 } else {
-                    brother->keys[brother->num] = parent->keys[index];
+                    // 左兄弟刚好有min_key_num-1，故将pNode并入左兄弟
+                    brother->keys[brother->key_num] = parent->keys[index];
                     parent->deleteKeyByIndex(index);
-                    brother->num++;
+                    brother->key_num++;
 
-                    for (int i = 0; i < pNode->num; i++) {
-                        brother->childs[brother->num+i] = pNode->childs[i];
-                        brother->keys[brother->num+i] = pNode->keys[i];
-                        brother->childs[brother->num+i]-> parent= brother;
+                    for (int i = 0; i < pNode->key_num; i++) {
+                        brother->children[brother->key_num+i] = pNode->children[i];
+                        brother->keys[brother->key_num+i] = pNode->keys[i];
+                        brother->children[brother->key_num+i]-> parent= brother;
                     }
-                    brother->childs[brother->num+pNode->num] = pNode->childs[pNode->num];
-                    brother->childs[brother->num+pNode->num]->parent = brother;
+                    brother->children[brother->key_num+pNode->key_num] = pNode->children[pNode->key_num];
+                    brother->children[brother->key_num+pNode->key_num]->parent = brother;
 
-                    brother->num += pNode->num;
+                    brother->key_num += pNode->key_num;
 
                     delete pNode;
                     node_num --;
-
-                    return adjustAfterDelete(parent);
+                    // parent失去一个key，故maintain parent
+                    return deleteMaintain(parent);
                 }
 
             } else {
-                if (parent->childs[0] == pNode)
-                    brother = parent->childs[1];
+                // 选择pNode的右兄弟
+                if (parent->children[0] == pNode)
+                    brother = parent->children[1];
                 else
-                    brother = parent->childs[index+2];
-                if (brother->num > minmumKeyNum - 1) {
+                    brother = parent->children[index+2];
+                if (brother->key_num > min_key_num - 1) {
+                    // 右兄弟有“多余”的结点
+                    pNode->children[pNode->key_num+1] = brother->children[0];
+                    pNode->keys[pNode->key_num] = brother->keys[0];
+                    pNode->children[pNode->key_num+1]->parent = pNode;
+                    pNode->key_num++;
 
-                    pNode->childs[pNode->num+1] = brother->childs[0];
-                    pNode->keys[pNode->num] = brother->keys[0];
-                    pNode->childs[pNode->num+1]->parent = pNode;
-                    pNode->num++;
-
-                    if (pNode == parent->childs[0])
+                    if (pNode == parent->children[0])
                         parent->keys[0] = brother->keys[0];
                     else
                         parent->keys[index+1] = brother->keys[0];
 
-                    brother->childs[0] = brother->childs[1];
+                    brother->children[0] = brother->children[1];
                     brother->deleteKeyByIndex(0);
 
                     return true;
                 } else {
+                    // 右兄弟刚好有min_key_num-1，故将右兄弟并入pNode
+                    pNode->keys[pNode->key_num] = parent->keys[index];
 
-                    pNode->keys[pNode->num] = parent->keys[index];
-
-                    if(pNode == parent->childs[0])
+                    if(pNode == parent->children[0])
                         parent->deleteKeyByIndex(0);
                     else
                         parent->deleteKeyByIndex(index+1);
 
-                    pNode->num++;
+                    pNode->key_num++;
 
-                    for (int i = 0; i < brother->num; i++) {
-                        pNode->childs[pNode->num+i] = brother->childs[i];
-                        pNode->keys[pNode->num+i] = brother->keys[i];
-                        pNode->childs[pNode->num+i]->parent = pNode;
+                    for (int i = 0; i < brother->key_num; i++) {
+                        pNode->children[pNode->key_num+i] = brother->children[i];
+                        pNode->keys[pNode->key_num+i] = brother->keys[i];
+                        pNode->children[pNode->key_num+i]->parent = pNode;
                     }
-                    pNode->childs[pNode->num+brother->num] = brother->childs[brother->num];
-                    pNode->childs[pNode->num+brother->num]->parent = pNode;
+                    pNode->children[pNode->key_num+brother->key_num] = brother->children[brother->key_num];
+                    pNode->children[pNode->key_num+brother->key_num]->parent = pNode;
 
-                    pNode->num += brother->num;
+                    pNode->key_num += brother->key_num;
 
                     delete brother;
                     node_num--;
-
-                    return adjustAfterDelete(parent);
+                    // parent失去一个key，故maintain parent
+                    return deleteMaintain(parent);
                 }
 
             }
@@ -935,19 +756,15 @@ bool BPlusTree<T>::adjustAfterDelete(Tree pNode)
     return false;
 }
 
-//输入：树的根结点
-//功能：删除整棵树并释放内存空间，主要用在析构函数中
+// 递归删除整棵树并释放内存空间
 template <class T>
 void BPlusTree<T>::dropTree(Tree node)
 {
-	//空树
-    if (!node)
-		return;
-	//非叶节点
-    if (!node->isLeaf) {
-        for(unsigned int i = 0; i <= node->num; i++) {
-            dropTree(node->childs[i]);
-            node->childs[i] = NULL;
+    if (!node) return;
+    if (!node->is_leaf) {
+        for(unsigned int i = 0; i <= node->key_num; i++) {
+            dropTree(node->children[i]);
+            node->children[i] = NULL;
         }
     }
     delete node;
@@ -960,82 +777,77 @@ void BPlusTree<T>::dropTree(Tree node)
 template <class T>
 void BPlusTree<T>::searchRange(T& key1, T& key2, std::vector<int>& vals, int flag)
 {
-	//空树
 	if (!root)
 		return;
 
-	if (flag == 2) {
-		searchNodeParse snp1;
-		findToLeaf(root, key1, snp1);
+	if (flag == 2) { // 找(key1, all)
+		nodePos np1;
+		findLeaf(root, key1, np1);
 
-		bool finished = false;
-		Tree pNode = snp1.pNode;
-		unsigned int index = snp1.index;
+		Tree pNode = np1.pNode;
+		unsigned int index = np1.index;
 
-		do {
-			finished = pNode->findRange2(index, vals);
-			index = 0;
-			if (pNode->nextLeafNode == NULL)
-				break;
-			else
-				pNode = pNode->nextLeaf();
-		} while (!finished);
-	} else if (flag == 1) {
-		searchNodeParse snp2;
-		findToLeaf(root, key2, snp2);
+        while(1)
+        {
+            pNode->findRangeAfterIndex(index, vals);
+            index = 0;
+            if(!pNode->next_leaf)break;
+            else pNode = pNode->next_leaf;
+        }
+	} else if (flag == 1) { // 找（key2, all） 
+		nodePos np2;
+		findLeaf(root, key2, np2);
 
-		bool finished = false;
-		Tree pNode = snp2.pNode;
-		unsigned int index = snp2.index;
+		Tree pNode = np2.pNode;
+		unsigned int index = np2.index;
 
-		do {
-			finished = pNode->findRange2(index, vals);
-			index = 0;
-			if (pNode->nextLeafNode == NULL)
-				break;
-			else
-				pNode = pNode->nextLeaf();
-		} while (!finished);
-	} else {
-		searchNodeParse snp1, snp2;
-	    findToLeaf(root, key1, snp1);
-		findToLeaf(root, key2, snp2);
+        while(1)
+        {
+            pNode->findRangeAfterIndex(index, vals);
+            index = 0;
+            if(!pNode->next_leaf)break;
+            else pNode = pNode->next_leaf;
+        }
+	} else { // 找(key1, key2)或者(key2, key1)
+		nodePos np1, np2;
+	    findLeaf(root, key1, np1);
+		findLeaf(root, key2, np2);
 		bool finished = false;
 		unsigned int index;
 
 		if (key1 <= key2) {
-			Tree pNode = snp1.pNode;
-			index = snp1.index;
+			Tree pNode = np1.pNode;
+			index = np1.index;
 			do {
-				finished = pNode->findRange(index, key2, vals);
+				finished = pNode->findRangeIndexKey(index, key2, vals);
 				index = 0;
-				if (pNode->nextLeafNode == NULL)
+				if (pNode->next_leaf == NULL)
 					break;
 				else
-					pNode = pNode->nextLeaf();
+					pNode = pNode->next_leaf;
 			} while (!finished);
 		} else {
-			Tree pNode = snp2.pNode;
-			index = snp2.index;
+			Tree pNode = np2.pNode;
+			index = np2.index;
 			do {
-				finished = pNode->findRange(index, key1, vals);
+				finished = pNode->findRangeIndexKey(index, key1, vals);
 				index = 0;
-				if (pNode->nextLeafNode == NULL)
+				if (pNode->next_leaf == NULL)
 					break;
 				else
-					pNode = pNode->nextLeaf();
+					pNode = pNode->next_leaf;
 			} while (!finished);
 		}
 	}
-	//}
 
 	std::sort(vals.begin(),vals.end());
+    // "hello,world" -> "helo,world." 去重
     vals.erase(unique(vals.begin(), vals.end()), vals.end());
 	return;
 }
 
 //获取文件大小
-// MY-NOTES 不是获取大小，只是创建文件 吧
+    // 创建文件
 template <class T>
 void BPlusTree<T>::getFile(std::string fname) {
     FILE* f = fopen(fname.c_str() , "r");
@@ -1047,7 +859,7 @@ void BPlusTree<T>::getFile(std::string fname) {
     fclose(f);
     return;
 }
-
+    // 获取块号
 template <class T>
 int BPlusTree<T>::getBlockNum(std::string table_name)
 {
@@ -1064,23 +876,18 @@ template <class T>
 void BPlusTree<T>::readFromDiskAll()
 {
     std::string fname = "./database/index/" + file_name;
-    //std::string fname = file_name;
+
     getFile(fname);// 创建文件
     int block_num = getBlockNum(fname);
 
-	if (block_num <= 0)// 表是空的
+	if (block_num <= 0)// empty table
         block_num = 1;
 
 	for (int i = 0; i < block_num; i++) {
-        //获取当前块的句柄
         char* p = buffer_manager.getPage(fname, i);
-        //char* t = p;
-        //遍历块中所有记录
-
 		readFromDisk(p, p+PAGESIZE);
     } // 一次把整个表都读到BUFFER里
 }
-
 
 template <class T>
 void BPlusTree<T>::readFromDisk(char* p, char* end)
@@ -1088,6 +895,7 @@ void BPlusTree<T>::readFromDisk(char* p, char* end)
     T key;
     int value;
     
+    // # keys[0] vals[0] # keys[1] vals[1] ...
     for (int i = 0; i < PAGESIZE; i++)
         if (p[i] != '#')
             return;
@@ -1096,9 +904,10 @@ void BPlusTree<T>::readFromDisk(char* p, char* end)
             char tmp[100];
             int j;
             
-            for (j = 0; i < PAGESIZE && p[i] != ' '; i++)
+            for (j = 0; i < PAGESIZE && p[i] != ' '; i++)// 去除空格
                 tmp[j++] = p[i];
             tmp[j] = '\0';
+            //tmp类似于 keys[0]'\0'...
             std::string s(tmp);
             std::stringstream stream(s);
             stream >> key;
@@ -1109,6 +918,7 @@ void BPlusTree<T>::readFromDisk(char* p, char* end)
             for (j = 0; i < PAGESIZE && p[i] != ' '; i++)
                 tmp[j++] = p[i];
             tmp[j] = '\0';
+            //tmp类似于 vals[0]'\0'...
             std::string s1(tmp);
             std::stringstream stream1(s1);
             stream1 >> value;
@@ -1122,20 +932,22 @@ template <class T>
 void BPlusTree<T>::writtenbackToDiskAll()
 {
     std::string fname = "./database/index/" + file_name;
-    //std::string fname = file_name;
+
     getFile(fname);
 	int block_num = getBlockNum(fname);
 
-    Tree ntmp = leafHead;
+    Tree ntmp = first_leaf;
 	int i, j;
     
+    // 将所有叶子结点的key, val写入page
     for (j = 0, i = 0; ntmp != NULL; j++) {
 		char* p = buffer_manager.getPage(fname, j);
         int offset = 0;
         
-		memset(p, 0, PAGESIZE);
+		memset(p, 0, PAGESIZE); // 将page清空
         
-        for (i = 0; i < ntmp->num; i++) {
+        // # keys[0] vals[0] # keys[1] vals[1] ...
+        for (i = 0; i < ntmp->key_num; i++) {
             p[offset++] = '#';
             p[offset++] = ' ';
             
@@ -1145,14 +957,15 @@ void BPlusTree<T>::writtenbackToDiskAll()
             p[offset++] = ' ';
 		}
         
-        p[offset] = '\0';
+        p[offset] = '\0';// 标志一个page的结束
 
 		int page_id = buffer_manager.getPageId(fname, j);
 		buffer_manager.modifyPage(page_id);
         
-        ntmp = ntmp->nextLeafNode;
+        ntmp = ntmp->next_leaf;
     }
 
+    // 没用完的block都填0并标记已修改。
     while (j < block_num) {
 		char* p = buffer_manager.getPage(fname, j);
 		memset(p, 0, PAGESIZE);
@@ -1167,24 +980,4 @@ void BPlusTree<T>::writtenbackToDiskAll()
 
 }
 
-template <class T>
-void BPlusTree<T>::printleaf()
-{
-    Tree p = leafHead;
-    while (p != NULL) {
-        p->printl();
-        p = p->nextLeaf();
-    }
-    
-    return;
-}
-
-template <class T>
-void TreeNode<T>::printl()
-{
-    for (int i = 0; i < num; i++)
-        std::cout << "->" << keys[i];
-    std::cout<<std::endl;
-    
-}
 #endif

@@ -1,12 +1,4 @@
-//
-//  index_manager.cc
-//  index_manager
-//
-//  Created by Xw on 2017/6/5.
-//  Copyright © 2017年 Xw. All rights reserved.
-//
 
-// TODO 可以改变量名，比如itr
 
 #include "index_manager.h"
 #include "const.h"
@@ -30,33 +22,31 @@ IndexManager::IndexManager(std:: string table_name)
 
 IndexManager::~IndexManager()
 {
-    for (intMap::iterator itInt = indexIntMap.begin(); itInt != indexIntMap.end(); itInt++) {
-        if (itInt->second) { // get Value
-            itInt->second->writtenbackToDiskAll();
-            delete itInt->second;
+    for (intMap::iterator itrInt = indexIntMap.begin(); itrInt != indexIntMap.end(); itrInt++) {
+        if (itrInt->second) { // get Value
+            itrInt->second->writtenbackToDiskAll();
+            delete itrInt->second;
         }
     }
-    for (stringMap::iterator itString = indexStringMap.begin(); itString != indexStringMap.end(); itString++) {
-        if (itString->second) {
-            itString->second->writtenbackToDiskAll();
-            delete itString->second;
+    for (stringMap::iterator itrString = indexStringMap.begin(); itrString != indexStringMap.end(); itrString++) {
+        if (itrString->second) {
+            itrString->second->writtenbackToDiskAll();
+            delete itrString->second;
         }
     }
-    for (floatMap::iterator itFloat = indexFloatMap.begin(); itFloat != indexFloatMap.end(); itFloat++) {
-        if(itFloat->second) {
-            itFloat->second->writtenbackToDiskAll();
-            delete itFloat->second;
+    for (floatMap::iterator itrFloat = indexFloatMap.begin(); itrFloat != indexFloatMap.end(); itrFloat++) {
+        if(itrFloat->second) {
+            itrFloat->second->writtenbackToDiskAll();
+            delete itrFloat->second;
         }
     }
 }
 
 void IndexManager::createIndex(std::string path_file, int type)
 {
-    int key_size = getKeySize(type); //获取key的size
-    int degree = getDegree(type); //获取需要的degree
+    int key_size = getKeySize(type); 
+    int degree = getDegree(type);
 
-	//根据数据类型不同，用对应的方法建立映射关系
-	//并且先初始化一颗B+树
     if (type == TYPE_INT) { // TODO 不会有内存泄漏吗？
         BPlusTree<int> *tree = new BPlusTree<int>(path_file, key_size, degree);
         indexIntMap.insert(intMap::value_type(path_file, tree));
@@ -73,89 +63,83 @@ void IndexManager::createIndex(std::string path_file, int type)
 
 void IndexManager::dropIndex(std::string path_file, int type)
 {
-    if(isExistIndex(path_file, type))
-    {
-        switch(type)
-        {
-            case TYPE_INT:
-                intMap::iterator itInt = indexIntMap.find(path_file);
-                delete itInt->second;
-                indexIntMap.erase(itInt);
-            break;
-            case TYPE_FLOAT:
-                floatMap::iterator itFloat = indexFloatMap.find(path_file);
-                delete itFloat->second;
-                indexFloatMap.erase(itFloat);            
-            break;
-            default:
-                stringMap::iterator itString = indexStringMap.find(path_file);
-                delete itString->second;
-                indexStringMap.erase(itString);            
+    if (type == TYPE_INT) {
+        intMap::iterator itrInt = indexIntMap.find(path_file);
+        if (itrInt == indexIntMap.end()) return;
+        else {
+            delete itrInt->second;
+            indexIntMap.erase(itrInt);
         }
-    }else return;
+    } else if (type == TYPE_FLOAT) { 
+        floatMap::iterator itrFloat = indexFloatMap.find(path_file);
+        if (itrFloat == indexFloatMap.end()) return;
+        else {
+            delete itrFloat->second;
+            indexFloatMap.erase(itrFloat);
+        }
+    } else {
+        stringMap::iterator itrString = indexStringMap.find(path_file);
+        if (itrString == indexStringMap.end()) return;
+        else {
+            delete itrString->second;
+            indexStringMap.erase(itrString);
+        }
+    }
+
+	return;    
 }
 
 int IndexManager::findIndex(std::string path_file, Data data)
 {
-    if(isExistIndex(path_file, data.type))
-    {
-        switch(data.type)
-        {
-            case TYPE_INT:
-                intMap::iterator itInt = indexIntMap.find(path_file);
-                return itInt->second->searchVal(data.datai);
-                break;
-            case TYPE_FLOAT:
-                floatMap::iterator itFloat = indexFloatMap.find(path_file);
-                return itFloat->second->searchVal(data.dataf);
-                break;
-            default:
-                stringMap::iterator itString = indexStringMap.find(path_file);
-                return itString->second->searchVal(data.datas);
-        }
-    }else return -1;
+    if (data.type == TYPE_INT) {
+        intMap::iterator itrInt = indexIntMap.find(path_file);
+        if (itrInt == indexIntMap.end()) return -1;
+        else return itrInt->second->findValue(data.datai);
+    } else if(data.type == TYPE_FLOAT) {
+        floatMap::iterator itrFloat = indexFloatMap.find(path_file);
+        if (itrFloat == indexFloatMap.end()) return -1;
+        else return itrFloat->second->findValue(data.dataf);
+    } else {
+        stringMap::iterator itrString = indexStringMap.find(path_file);
+        if (itrString == indexStringMap.end()) return -1;
+        else return itrString->second->findValue(data.datas);
+    }
 }
 
 void IndexManager::insertIndex(std::string path_file, Data data, int block_id)
 {
-    if(isExistIndex(path_file, data.type))
-    {
-        switch(data.type)
-        {
-            case TYPE_INT:
-                intMap::iterator itInt = indexIntMap.find(path_file);
-                itInt->second->insertKey(data.datai, block_id);
-                break;
-            case TYPE_FLOAT:
-                floatMap::iterator itFloat = indexFloatMap.find(path_file);
-                itFloat->second->insertKey(data.dataf, block_id);
-                break;
-            default:
-                stringMap::iterator itString = indexStringMap.find(path_file);
-                itString->second->insertKey(data.datas, block_id);
-        }
-    }else return;
+    if (data.type == TYPE_INT) {
+        intMap::iterator itrInt = indexIntMap.find(path_file);
+        if (itrInt == indexIntMap.end()) return;
+        else itrInt->second->insertKey(data.datai, block_id);
+    } else if (data.type == TYPE_FLOAT) {
+        floatMap::iterator itrFloat = indexFloatMap.find(path_file);
+        if (itrFloat == indexFloatMap.end()) return;
+        else itrFloat->second->insertKey(data.dataf, block_id);
+    } else {
+        stringMap::iterator itrString = indexStringMap.find(path_file);
+        if (itrString == indexStringMap.end()) return;
+        else itrString->second->insertKey(data.datas, block_id);
+    }
+
+    return;
 }
 
 void IndexManager::deleteIndexByKey(std::string path_file, Data data)
 {
-    if(isExistIndex(path_file, data.type))
-    {
-        switch(data.type)
-        {
-            case TYPE_INT:
-                intMap::iterator itInt = indexIntMap.find(path_file);
-                itInt->second->deleteKey(data.datai);
-                break;
-            case TYPE_FLOAT:
-                floatMap::iterator itFloat = indexFloatMap.find(path_file);
-                itFloat->second->deleteKey(data.dataf);
-                break;
-            default:
-                stringMap::iterator itString = indexStringMap.find(path_file);
-                itString->second->deleteKey(data.datas);
-        }
-    }else return;
+    if (data.type == TYPE_INT) {
+        intMap::iterator itrInt = indexIntMap.find(path_file);
+        if (itrInt == indexIntMap.end()) return;
+        else itrInt->second->deleteKey(data.datai);
+    } else if (data.type == TYPE_FLOAT) {
+        floatMap::iterator itrFloat = indexFloatMap.find(path_file);
+        if (itrFloat == indexFloatMap.end()) return;
+        else itrFloat->second->deleteKey(data.dataf);
+    } else {
+        stringMap::iterator itrString = indexStringMap.find(path_file);
+        if(itrString == indexStringMap.end()) return;
+        else itrString->second->deleteKey(data.datas);
+    }
 }
 
 int IndexManager::getDegree(int type)
@@ -182,45 +166,19 @@ void IndexManager::searchRange(std::string path_file, Data data1, Data data2, st
     } else if (data2.type == -2) {
         flag = 2;
     }
-    /*
-    else if (data1.type != data2.type) {
-        // cout << "ERROR: in searchRange: Wrong data type!" << endl;
-        return;
-    }
-     */
 
-    if(isExistIndex(path_file, data1.type))
-    {
-        switch(data1.type)
-        {
-            case TYPE_INT:
-                intMap::iterator itInt = indexIntMap.find(path_file);
-                itInt->second->searchRange(data1.datai, data2.datai, vals, flag);
-                break;
-            case TYPE_FLOAT:
-                floatMap::iterator itFloat = indexFloatMap.find(path_file);
-                itFloat->second->searchRange(data1.dataf, data2.dataf, vals, flag);
-                break;
-            default:
-                stringMap::iterator itString = indexStringMap.find(path_file);
-                itString->second->searchRange(data1.datas, data2.datas, vals, flag);
-        }
-    }else return;
-}
-
-bool IndexManager::isExistIndex(std::string path_file, int type)
-{
-    if (type == TYPE_INT) {
-        intMap::iterator itInt = indexIntMap.find(path_file);
-        if (itInt == indexIntMap.end()) return false;
-        else return true;
-    } else if (type == TYPE_FLOAT) {
-        floatMap::iterator itFloat = indexFloatMap.find(path_file);
-        if (itFloat == indexFloatMap.end()) return false;
-        else return true;
+    if (data1.type == TYPE_INT) {
+        intMap::iterator itrInt = indexIntMap.find(path_file);
+        if (itrInt == indexIntMap.end()) return;
+        else itrInt->second->searchRange(data1.datai, data2.datai, vals, flag);
+    } else if (data1.type == TYPE_FLOAT) {
+        floatMap::iterator itrFloat = indexFloatMap.find(path_file);
+        if (itrFloat == indexFloatMap.end()) return;
+        else itrFloat->second->searchRange(data1.dataf, data2.dataf, vals, flag);
     } else {
-        stringMap::iterator itString = indexStringMap.find(path_file);
-        if(itString == indexStringMap.end()) return false;
-        else return true;
-    }    
+        stringMap::iterator itrString = indexStringMap.find(path_file);
+        if(itrString == indexStringMap.end()) return;
+        else itrString->second->searchRange(data1.datas, data2.datas, vals, flag);
+    }
 }
+
