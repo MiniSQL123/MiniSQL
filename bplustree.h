@@ -1,21 +1,28 @@
+//
+//  bplustree.h
+//  bplustree
+//
+//  Created by Xw on 2017/5/31.
+//  Copyright © 2017年 Xw. All rights reserved.
+//
 
 #ifndef _BPLUSTREE_H_
 #define _BPLUSTREE_H_ 1
 
 #include <vector>
 #include <string>
+#include <string.h>
 #include <map>
 #include <iostream>
 #include <sstream>
 #include <algorithm>
-#include <string.h>
 #include "basic.h"
 #include "const.h"
 #include "exception.h"
 #include "buffer_manager.h"
 #include "template_function.h"
-
-extern BufferManager BM;
+using namespace std;
+extern BufferManager buffer_manager;
 
 //模板类TreeNode，用于存放B+树的结点数据以及进行相关的操作
 //使用模板类保证直接适配int，float, string三种类型数据
@@ -82,7 +89,7 @@ public:
 };
 
 //模板类BPlusTree，用于对整个B+树的操作
-//由此模块操作TreeNode模块，并且由此模块 BM模块进行交互
+//由此模块操作TreeNode模块，并且由此模块与buffer_manager模块进行交互
 //完成文件的读写操作
 template <typename T>
 class BPlusTree {
@@ -173,8 +180,10 @@ TreeNode<T>::TreeNode(int in_degree, bool Leaf):
 	nextLeafNode(NULL),
 	isLeaf(Leaf),
 	degree(in_degree)
-{
-    for (unsigned i = 0; i < degree+1; i++) {
+{   // MY-NOTES: 最大能存到degree+1个key, vals; 最大能存到degree+2个pointer
+    // MY-NOTES: degree都记的是基数，实际能存x个key，其中x都是偶数
+    for (unsigned i = 0; i < degree+1; i++) { 
+        // MY-NOTES 这里的i < degree+1的+1是预留给“爆了”的结点进行调整的
         childs.push_back(NULL);
         keys.push_back(T());
         vals.push_back(int());
@@ -229,7 +238,7 @@ bool TreeNode<T>::findKey(T key, unsigned int &index)
                 } else if (keys[i] < key)
                     continue;
                 else if(keys[i] > key) {
-                    index = i;
+                    index = i;// 返回最接近的index
                     return false;
                 }
             }
@@ -248,15 +257,15 @@ bool TreeNode<T>::findKey(T key, unsigned int &index)
                     right = pos;
                 }
             }
-
+            // MY-NOTES: 没找到情况必然是left+1==right
             if (keys[left] >= key) {
                 index = left;
-                return (keys[left] == key);
+                return (keys[left] == key);// TODO 但如果是==的话，不是应该到children[left+1]里去找吗--是的，就是这样
             } else if (keys[right] >= key) {
                 index = right;
                 return (keys[right] == key);
             } else if(keys[right] < key) {
-                index = right ++;
+                index = right ++;// TODO 这里不应该是++right吗。。【我觉得就是++right!
                 return false;
             }
         }//二分搜索结束
@@ -273,7 +282,7 @@ template <class T>
 TreeNode<T>* TreeNode<T>::splitNode(T &key)
 {
 	//最小结点数量
-    unsigned int minmumNodeNum = (degree - 1) / 2;
+    unsigned int minmumNodeNum = (degree - 1) / 2; // MY-NOTES: 相当于取下整
 	//创建新结点
     TreeNode* newNode = new TreeNode(degree, this->isLeaf);
 
@@ -288,6 +297,7 @@ TreeNode<T>* TreeNode<T>::splitNode(T &key)
     if (isLeaf) {
         key = keys[minmumNodeNum + 1];
 		//将右半部分key值拷贝至新结点内
+        // MY-NOTES: 新结点持有min_node_num个Key或者val
         for (unsigned int i = minmumNodeNum + 1; i < degree; i++) {
             newNode->keys[i-minmumNodeNum-1] = keys[i];
             keys[i] = T();
@@ -301,10 +311,11 @@ TreeNode<T>* TreeNode<T>::splitNode(T &key)
 
 		//调整两结点内key数量
         newNode->num = minmumNodeNum;
-        this->num = minmumNodeNum + 1;
+        this->num = minmumNodeNum + 1;// TODO 为什么是+1呢
     } else if (!isLeaf) {  //非叶结点情况
         key = keys[minmumNodeNum];
 		//拷贝子结点指针至新结点
+        // MY-NOTES: 新结点存有min_node_num个结点
         for (unsigned int i = minmumNodeNum + 1; i < degree+1; i++) {
             newNode->childs[i-minmumNodeNum-1] = this->childs[i];
             newNode->childs[i-minmumNodeNum-1]->parent = newNode;
@@ -529,6 +540,7 @@ void BPlusTree<T>::initTree()
 }
 
 //用于查找某key值所处的叶结点位置
+// TODO 这里为什么会给个Tree pNode参数？
 template <class T>
 void BPlusTree<T>::findToLeaf(Tree pNode, T key, searchNodeParse &snp)
 {
@@ -542,11 +554,13 @@ void BPlusTree<T>::findToLeaf(Tree pNode, T key, searchNodeParse &snp)
             snp.ifFound = true;
         } else {
 			//此结点不是子结点，查找它的下一层
+            // 注意是index+1，配合node->findKey来看，找到的时候就应该用index+1继续查
             pNode = pNode->childs[index+1];
             while (!pNode->isLeaf) {
                 pNode = pNode->childs[0];
             }
 			//因为已找到key值，所以其最底层叶结点index[0]即为该key
+            // 确实 写得挺好
             snp.pNode = pNode;
             snp.index = 0;
             snp.ifFound = true;
@@ -560,7 +574,7 @@ void BPlusTree<T>::findToLeaf(Tree pNode, T key, searchNodeParse &snp)
             snp.ifFound = false;
         } else {
 			//递归寻找下一层
-            findToLeaf(pNode->childs[index], key, snp);
+            findToLeaf(pNode->childs[index], key, snp);// 返回最接近的index是在这里用到的
         }
     }
 
@@ -580,7 +594,7 @@ bool BPlusTree<T>::insertKey(T &key, int val)
 		initTree();
 	//查找插入值是否存在
     findToLeaf(root, key, snp);
-    if (snp.ifFound) { //已存在
+    if (snp.ifFound) { //已存在 // TODO 如果已存在的话，不应该是看val决定更不更新val吗？
 		/*
         cout << "Error:in insert key to index: the duplicated key!" << endl;
 		*/
@@ -632,7 +646,9 @@ bool BPlusTree<T>::adjustAfterinsert(Tree pNode)
         parent->childs[index+1] = newNode;
         newNode->parent = parent;
 		//递归进行调整
-        if(parent->num == degree)
+        if(parent->num == degree)// MY-NOTES 等于degree的时候是已经爆了而不是已经满了
+            // TODO 我怀疑是最初getDegree定义的时候定义错了。
+            // 因为getDegree算出来的，对应书上的其实是N-1而不是N
             return adjustAfterinsert(parent);
 
         return true;
@@ -682,7 +698,7 @@ bool BPlusTree<T>::deleteKey(T &key)
                 snp.pNode->deleteKeyByIndex(snp.index);
                 key_num--;
                 return adjustAfterDelete(snp.pNode);
-            } else {
+            } else {// TODO 这里暂时懒得看
                 if (snp.index == 0 && leafHead != snp.pNode) {
 					//key存在于枝干结点上
 					//到上一层去更新枝干层
@@ -1019,6 +1035,7 @@ void BPlusTree<T>::searchRange(T& key1, T& key2, std::vector<int>& vals, int fla
 }
 
 //获取文件大小
+// MY-NOTES 不是获取大小，只是创建文件 吧
 template <class T>
 void BPlusTree<T>::getFile(std::string fname) {
     FILE* f = fopen(fname.c_str() , "r");
@@ -1037,7 +1054,7 @@ int BPlusTree<T>::getBlockNum(std::string table_name)
     char* p;
     int block_num = -1;
     do {
-        p = BM.getPage(table_name , block_num + 1);
+        p = buffer_manager.getPage(table_name , block_num + 1);
         block_num++;
     } while(p[0] != '\0');
     return block_num;
@@ -1046,22 +1063,22 @@ int BPlusTree<T>::getBlockNum(std::string table_name)
 template <class T>
 void BPlusTree<T>::readFromDiskAll()
 {
-    std::string fname = "./DBFiles/index/" + file_name;
+    std::string fname = "./database/index/" + file_name;
     //std::string fname = file_name;
-    getFile(fname);
+    getFile(fname);// 创建文件
     int block_num = getBlockNum(fname);
 
-	if (block_num <= 0)
+	if (block_num <= 0)// 表是空的
         block_num = 1;
 
 	for (int i = 0; i < block_num; i++) {
         //获取当前块的句柄
-        char* p = BM.getPage(fname, i);
+        char* p = buffer_manager.getPage(fname, i);
         //char* t = p;
         //遍历块中所有记录
 
 		readFromDisk(p, p+PAGESIZE);
-    }
+    } // 一次把整个表都读到BUFFER里
 }
 
 
@@ -1104,7 +1121,7 @@ void BPlusTree<T>::readFromDisk(char* p, char* end)
 template <class T>
 void BPlusTree<T>::writtenbackToDiskAll()
 {
-    std::string fname = "./DBFiles/index/" + file_name;
+    std::string fname = "./database/index/" + file_name;
     //std::string fname = file_name;
     getFile(fname);
 	int block_num = getBlockNum(fname);
@@ -1113,7 +1130,7 @@ void BPlusTree<T>::writtenbackToDiskAll()
 	int i, j;
     
     for (j = 0, i = 0; ntmp != NULL; j++) {
-		char* p = BM.getPage(fname, j);
+		char* p = buffer_manager.getPage(fname, j);
         int offset = 0;
         
 		memset(p, 0, PAGESIZE);
@@ -1130,18 +1147,18 @@ void BPlusTree<T>::writtenbackToDiskAll()
         
         p[offset] = '\0';
 
-		int page_id = BM.getPageId(fname, j);
-	 BM.modifyPage(page_id);
+		int page_id = buffer_manager.getPageId(fname, j);
+		buffer_manager.modifyPage(page_id);
         
         ntmp = ntmp->nextLeafNode;
     }
 
     while (j < block_num) {
-		char* p = BM.getPage(fname, j);
+		char* p = buffer_manager.getPage(fname, j);
 		memset(p, 0, PAGESIZE);
 
-		int page_id = BM.getPageId(fname, j);
-	 BM.modifyPage(page_id);
+		int page_id = buffer_manager.getPageId(fname, j);
+		buffer_manager.modifyPage(page_id);
 
         j++;
     }

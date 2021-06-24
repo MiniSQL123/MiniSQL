@@ -26,32 +26,32 @@ public:
 	//输出：void
 	//功能：创建索引文件及B+树
 	//异常：
-	void createIndex(std::string file_path, int type);
+	void createIndex(std::string path_file, int type);
 	//输入：Index文件名(路径)，索引的key的类型
 	//输出：void
 	//功能：删除索引、B+树及文件
 	//异常：
-    void dropIndex(std::string file_path, int type);
+    void dropIndex(std::string path_file, int type);
 	//输入：Index文件名(路径)，索引的key(包含类型)
 	//输出：void
 	//功能：创建索引文件及B+树
 	//异常：
-    int findIndex(std::string file_path, Data data);
+    int findIndex(std::string path_file, Data data);
 	//输入：Index文件名(路径)，索引的key(包含类型)，block_id
 	//输出：void
 	//功能：在指定索引中插入一个key
 	//异常：
-    void insertIndex(std::string file_path, Data data , int block_id);
+    void insertIndex(std::string path_file, Data data , int block_id);
 	//输入：Index文件名(路径)，索引的key(包含类型)
 	//输出：void
 	//功能：在索引中删除相应的Key
 	//异常：
-    void deleteIndexByKey(std::string file_path, Data data);
+    void deleteIndexByKey(std::string path_file, Data data);
 	//输入：Index文件名(路径)，索引的key1(包含类型)，索引的key2(包含类型)，返回的vector引用
 	//输出：void
 	//功能：范围查找，返回一定范围内的value
 	//异常：
-	void searchRange(std::string file_path, Data data1, Data data2, std::vector<int>& vals);
+	void searchRange(std::string path_file, Data data1, Data data2, std::vector<int>& vals);
 
 private:
 	typedef std::map<std::string, BPlusTree<int> *> intMap;
@@ -79,6 +79,9 @@ private:
 	int getKeySize(int type);
 
 	//void setKey(int type, std::string key);
+
+	// 索引是否存在
+	bool IndexManager::isExistIndex(std::string path_file, int type);
 };
 
 #endif
