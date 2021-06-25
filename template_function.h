@@ -1,10 +1,4 @@
-//
-//  template_function.h
-//  template_function
-//
-//  Created by Hys on 2017/5/30.
-//  Copyright © 2017年 Hys. All rights reserved.
-//
+
 #ifndef _TEMPLATE_FUNCTION_H_
 #define _TEMPLATE_FUNCTION_H_ 1
 #include <sstream>

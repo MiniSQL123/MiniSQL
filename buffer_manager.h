@@ -1,10 +1,4 @@
-//
-//  buffer_manager.h
-//  buffer_manager
-//
-//  Created by Hys on 2017/5/21.
-//  Copyright © 2017年 Hys. All rights reserved.
-//
+
 #ifndef _BUFFER_MANAGER_H_
 #define _BUFFER_MANAGER_H_ 1
 

@@ -1,10 +1,4 @@
-//
-//  basic.h
-//  base
-//
-//  Created by Sr on 2017/5/25.
-//  Copyright © 2017年 Sr. All rights reserved.
-//
+
 
 #ifndef _BASIC_H_
 #define _BASIC_H_ 1
