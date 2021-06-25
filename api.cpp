@@ -56,7 +56,9 @@ bool API::API_Create_Table(std::string table_name, Attribute attribute, int prim
 {
 	record.createTableFile(table_name);
 	catalog.createTable(table_name, attribute, primary, index);
-
+    if(primary>=0){
+        API_Create_Index(table_name,table_name+"1",attribute.name[primary]);
+    }
 	return true;
 }
 
@@ -72,7 +74,7 @@ bool API::API_Create_Index(std::string table_name, std::string index_name, std::
 {
     IndexManager index(table_name);
     
-	std::string file_path = "INDEX_FILE_" + attr_name + "_" + table_name;
+	std::string file_path = attr_name + "_" + table_name;
 	int type;
 
 	catalog.createIndex(table_name, attr_name, index_name);
@@ -100,7 +102,7 @@ bool API::API_Drop_Index(std::string table_name, std::string index_name)
     IndexManager index(table_name);
     
 	std::string attr_name = catalog.IndextoAttr(table_name, index_name);
-	std::string file_path = "INDEX_FILE_" + attr_name + "_" + table_name;
+	std::string file_path = attr_name + "_" + table_name;
 	int type;
 
 	Attribute attr = catalog.getAttribute(table_name);

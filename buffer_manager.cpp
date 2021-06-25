@@ -6,6 +6,14 @@ Page::Page() {
     initialize();
 }
 // 初始化
+int Page::getlvt()
+{
+    return lvt;
+}
+void Page::setlvt()
+{
+    lvt=clock();
+}
 void Page::initialize() {
     file_name_ = "";
     block_id_ = -1;
@@ -13,11 +21,11 @@ void Page::initialize() {
     dirty_ = false;
     ref_ = false;
     avaliable_ = true;
+    lvt=0;
     for (int i = 0;i < PAGESIZE;i++) 
         buffer_[i] = '\0';
 }
 
-// 下面是一些存取控制函数，较为简单就不赘述了
 inline void Page::setFileName(std::string file_name) {
     file_name_ = file_name;
 }
@@ -70,6 +78,7 @@ inline char* Page::getBuffer() {
     return buffer_;
 }
 
+
 // BufferManager类的实现
 // 构造函数均调用实际初始化函数完成初始化
 BufferManager::BufferManager() {
@@ -98,7 +107,6 @@ void BufferManager::initialize(int frame_size) {
     current_position_ = 0;
 }
 
-// 下面几个函数较为简单，也不赘述了
 char* BufferManager::getPage(std::string file_name , int block_id) {
     int page_id = getPageId(file_name , block_id);
     if (page_id == -1) {
@@ -106,11 +114,13 @@ char* BufferManager::getPage(std::string file_name , int block_id) {
         loadDiskBlock(page_id , file_name , block_id);
     }
     Frames[page_id].setRef(true);
+    Frames[page_id].setlvt();
     return Frames[page_id].getBuffer();
 }
 
 void BufferManager::modifyPage(int page_id) {
     Frames[page_id].setDirty(true);
+    Frames[page_id].setlvt();
 }
 
 void BufferManager::pinPage(int page_id) {
@@ -151,6 +161,7 @@ int BufferManager::loadDiskBlock(int page_id , std::string file_name , int block
     Frames[page_id].setDirty(false);
     Frames[page_id].setRef(true);
     Frames[page_id].setAvaliable(false);
+    Frames[page_id].setlvt();
     //
     //if(page_id==2) 
     //std::cout<<page_id<<"    "<<file_name<<std::endl;
@@ -196,7 +207,23 @@ int BufferManager::getEmptyPageId() {
     // 如果所有页都已经被使用，那么需要找到一个页，将其删除掉。
     // 这里需要使用一些策略来选择哪一个页应该被删除。
     // 本程序中采用时钟替换策略。
-    while (1) {
+    //while (1) {
+        int replace_index=-1;
+        int replace_clock=-1;
+        for(int i=0;i<frame_size_;i++)
+        if(Frames[i].getPinCount()==0){
+            if(replace_index==-1){
+                replace_index=i;
+                replace_clock=Frames[i].getlvt();
+            }
+            else if(replace_clock>Frames[i].getlvt()){
+                replace_clock=Frames[i].getlvt();
+                replace_index=i;
+            }
+        }
+        ///******************************************************************
+        return replace_index;
+        /*
         // 如果页的ref为true，将其设为false
         if (Frames[current_position_].getRef() == true) {
             Frames[current_position_].setRef(false);
@@ -217,5 +244,6 @@ int BufferManager::getEmptyPageId() {
         }
         // 时钟指针顺时针转动
         current_position_ = (current_position_ + 1) % frame_size_;
-    }
+        */
+    //}
 }

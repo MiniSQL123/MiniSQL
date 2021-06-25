@@ -5,6 +5,7 @@
 #include "basic.h"
 #include "record_manager.h"
 #include "buffer_manager.h"
+#include "index_manager.h"
 
 //API接口。作为Interpreter层操作和底层Manager连接的接口
 //包含程序的所有功能接口

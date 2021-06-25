@@ -237,9 +237,11 @@ void Interpreter::Inter_File(){
         Standardize();
         Stringsplit(query," ",split_query);
         ProcessQuery();
+        if(count%100==0){
+            clock_t end = clock();
+            std::cout << "cost " << (double)(end - start) / CLOCKS_PER_SEC << " s" << std::endl;
+        }
     }
-    clock_t end = clock();
-    std::cout << "cost " << (double)(end - start) / CLOCKS_PER_SEC << " s" << std::endl;
 }
 
 
