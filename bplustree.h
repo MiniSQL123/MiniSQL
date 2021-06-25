@@ -166,7 +166,7 @@ bool Node<T>::findKey(T key, unsigned int &index)
                 index = high;
                 return (keys[high] == key);
             } else if(keys[high] < key) {
-                index = ++ high;// TODO 这里不应该是++high吗。。【我觉得就是++high!
+                index = ++ high;
                 return false;
             }
         }//二分搜索结束
@@ -180,10 +180,11 @@ Node<T>* Node<T>::splitNode(T &key)
 {
     unsigned int min_node_num = (degree - 1) / 2; // 相当于取下整
     Node* new_node = new Node(degree, this->is_leaf);
-
+    // 叶子结点被调用了此函数时，其实已经“爆了”
     if (is_leaf) {
         key = keys[min_node_num + 1];
         // 新结点持有min_node_num个Key或者val
+        // 原结点保留min_node_num+1个Key
         for (unsigned int i = min_node_num + 1; i < degree; i++) {
             new_node->keys[i-min_node_num-1] = keys[i];
             keys[i] = T();
@@ -196,10 +197,10 @@ Node<T>* Node<T>::splitNode(T &key)
         new_node->parent = this->parent;
 
         new_node->key_num = min_node_num;
-        this->key_num = min_node_num + 1;// TODO 为什么是+1呢
+        this->key_num = min_node_num + 1;
     } else if (!is_leaf) {  //非叶结点情况
-        key = keys[min_node_num];
-        // 新结点存有min_node_num个结点
+        key = keys[min_node_num]; // keys[min_node_num]是已经溢出的key
+        // 先拷贝“指针”到新结点，“指针”比“key”多1个
         for (unsigned int i = min_node_num + 1; i < degree+1; i++) {
             new_node->children[i-min_node_num-1] = this->children[i];
             new_node->children[i-min_node_num-1]->parent = new_node;
