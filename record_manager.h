@@ -52,6 +52,8 @@ class RecordManager {
         //异常：如果表不存在，抛出table_not_exist异常。如果属性不存在，抛出attribute_not_exist异常。
         void createIndex(IndexManager& index_manager , std::string table_name , std::string target_attr);
     private:
+        int isConflict1(std::string table_name,Tuple& tuple,int index);
+        int isConflict2(Tuple& a,Tuple& b,int index);
         int CheckAttrValid(std::string table_name,Tuple tuple);
         int CheckPrimaryKey(std::string table_name,Tuple tuple);
         int CheckUnique(std::string table_name,Tuple tuple);

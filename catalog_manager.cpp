@@ -1,10 +1,3 @@
-//
-//  catalog.cpp
-//  catalog
-//
-//  Created by Sr on 2017/5/24.
-//  Copyright © 2017年 Sr. All rights reserved.
-//
 
 #include "catalog_manager.h"
 

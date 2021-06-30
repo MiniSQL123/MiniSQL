@@ -1,10 +1,4 @@
-//
-//  api.cc
-//  api
-//
-//  Created by Xw on 2017/5/31.
-//  Copyright © 2017年 Xw. All rights reserved.
-//
+
 #include "api.h"
 #include "template_function.h"
 #include <algorithm>
@@ -25,7 +19,7 @@ API::~API(){}
 //如果表不存在，抛出table_not_exist异常
 //如果属性不存在，抛出attribute_not_exist异常
 //如果Where条件中的两个数据类型不匹配，抛出data_type_conflict异常
-Table API::selectRecord(std::string table_name, std::vector<std::string> target_attr, std::vector<Where> where, char operation)
+Table API::API_Select_Record(std::string table_name, std::vector<std::string> target_attr, std::vector<Where> where, char operation)
 {
 	if (target_attr.size() == 0) {
 		return record.selectRecord(table_name);
@@ -41,14 +35,8 @@ Table API::selectRecord(std::string table_name, std::vector<std::string> target_
 			return unionTable(table1, table2, target_attr[0], where[0]);
 	}
 }
-//输入：表名、Where条件属性名、Where条件值域
-//输出：void
-//功能：删除对应条件下的Table内记录(不删除表文件)
-//异常：由底层处理
-//如果表不存在，抛出table_not_exist异常
-//如果属性不存在，抛出attribute_not_exist异常
-//如果Where条件中的两个数据类型不匹配，抛出data_type_conflict异常
-int API::deleteRecord(std::string table_name , std::string target_attr , Where where)
+
+int API::API_Delete_Record(std::string table_name , std::string target_attr , Where where)
 {
     int result;
 	if (target_attr == "")
@@ -57,51 +45,32 @@ int API::deleteRecord(std::string table_name , std::string target_attr , Where w
 		result = record.deleteRecord(table_name, target_attr, where);
 	return result;
 }
-//输入：表名、一个元组对象
-//输出：void
-//功能：向对应表内插入一条记录
-//异常：由底层处理
-//如果元组类型不匹配，抛出tuple_type_conflict异常
-//如果主键冲突，抛出primary_key_conflict异常
-//如果unique属性冲突，抛出unique_conflict异常
-//如果表不存在，抛出table_not_exist异常
-void API::insertRecord(std::string table_name , Tuple& tuple)
+
+void API::API_Insert_Record(std::string table_name , Tuple& tuple)
 {
 	record.insertRecord(table_name, tuple);
 	return;
 }
-//输入：Table类型对象
-//输出：是否创建成功
-//功能：在数据库中插入一个表的元信息
-//异常：由底层处理
-//如果已经有相同表名的表存在，则抛出table_exist异常
-bool API::createTable(std::string table_name, Attribute attribute, int primary, Index index)
+
+bool API::API_Create_Table(std::string table_name, Attribute attribute, int primary, Index index)
 {
 	record.createTableFile(table_name);
 	catalog.createTable(table_name, attribute, primary, index);
-
+    if(primary>=0){
+        API_Create_Index(table_name,table_name+"1",attribute.name[primary]);
+    }
 	return true;
 }
-//输入：表名
-//输出：是否删除成功
-//功能：在数据库中删除一个表的元信息，及表内所有记录(删除表文件)
-//异常：由底层处理
-//如果表不存在，抛出table_not_exist异常
-bool API::dropTable(std::string table_name)
+
+bool API::API_Drop_Table(std::string table_name)
 {
 	record.dropTableFile(table_name);
 	catalog.dropTable(table_name);
 
 	return true;
 }
-//输入：表名，索引名，属性名
-//输出：是否创建成功
-//功能：在数据库中更新对应表的索引信息（在指定属性上建立一个索引）
-//异常：由底层处理
-//如果表不存在，抛出table_not_exist异常
-//如果对应属性不存在，抛出attribute_not_exist异常
-//如果对应属性已经有了索引，抛出index_exist异常
-bool API::createIndex(std::string table_name, std::string index_name, std::string attr_name)
+
+bool API::API_Create_Index(std::string table_name, std::string index_name, std::string attr_name)
 {
     IndexManager index(table_name);
     
@@ -128,12 +97,12 @@ bool API::createIndex(std::string table_name, std::string index_name, std::strin
 //如果表不存在，抛出table_not_exist异常
 //如果对应属性不存在，抛出attribute_not_exist异常
 //如果对应属性没有索引，抛出index_not_exist异常
-bool API::dropIndex(std::string table_name, std::string index_name)
+bool API::API_Drop_Index(std::string table_name, std::string index_name)
 {
     IndexManager index(table_name);
     
 	std::string attr_name = catalog.IndextoAttr(table_name, index_name);
-	std::string file_path =  attr_name + "_" + table_name;
+	std::string file_path = attr_name + "_" + table_name;
 	int type;
 
 	Attribute attr = catalog.getAttribute(table_name);
@@ -146,7 +115,7 @@ bool API::dropIndex(std::string table_name, std::string index_name)
 	index.dropIndex(file_path, type);
 	catalog.dropIndex(table_name, index_name);
 	
-	file_path = "./DBFiles/index/" + file_path;
+	file_path = "./database/index/" + file_path;
     remove(file_path.c_str());
 	return true;
 }

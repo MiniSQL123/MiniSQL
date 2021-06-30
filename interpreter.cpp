@@ -1,28 +1,51 @@
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <fstream>
+#include "basic.h"
+#include "API.h"
 #include "interpreter.h"
+#include "catalog_manager.h"
+#include <regex>
+#include "exception.h"
 
 Interpreter::Interpreter(){
+}
+
+void Stringsplit(const std::string& str, const std::string& split, std::vector<std::string>& res)
+{
+    //std::regex ws_re("\\s+"); // 正则表达式,匹配空格 
+    std::regex reg(split);		// 匹配split
+    std::sregex_token_iterator pos(str.begin(), str.end(), reg, -1);
+    decltype(pos) end;              // 自动推导类型 
+    for (; pos != end; ++pos)
+    {
+        res.push_back(pos->str());
+    }
 }
 
 //将query进行赋值
 void Interpreter::getQuery(){
 	std::string tmp;
-    //得到一行的所有字符，当最后一个字符为分号时结束
+    query.clear();
+    split_query.clear();
     do{
         std::cout<<">>> ";
         getline(std::cin,tmp);
         query+=tmp;
         query+=' ';
     }while(tmp[tmp.length()-1]!=';');
-    //在最后补一个结尾标识符
     query[query.length()-2]='\0';
-    //调用Normalize进行字符串的规范化
-    Normalize();
+    Standardize();
+    Stringsplit(query," ",split_query);
 }
 
-void Interpreter::Normalize(){
+void Interpreter::Standardize(){
     //在所有的特殊符号的前后增加一个空格以拆分段落
-    for(int pos=0;pos<query.length();pos++){
-        if(query[pos]=='*'||query[pos]=='='||query[pos]==','||query[pos]=='('||query[pos]==')'||query[pos]=='<'||query[pos]=='>'){
+    for(int pos=0;pos<query.length();pos++)
+    {
+        if(query[pos]=='*'||query[pos]=='='||query[pos]==','||query[pos]=='('||query[pos]==')'||query[pos]=='<'||query[pos]=='>')
+        {
             if(query[pos-1]!=' ')
                 query.insert(pos++," ");
             if(query[pos+1]!=' ')
@@ -50,57 +73,42 @@ void Interpreter::Normalize(){
 			continue;
 		}
 	}
-    //如果段落开始有空格，就删除多余空格以规范化
     if(query[0]==' ')
         query.erase(query.begin());
-    //将query的第一个词全部转换为小写，方便之后对字符串的解析
-    query=getLower(query, 0);
+    for(int i=0;i<query.size();i++)
+        query[i]=tolower(query[i]);
 }
 
-void Interpreter::EXEC(){
-    try{
-        //根据字符串的第一个单词来对所进行的操作解析
-        if(query.substr(0,6)=="select"){
-            EXEC_SELECT();
+void Interpreter::ProcessQuery()
+{
+    try{ 
+        if(split_query[0]=="select")
+             Inter_Select();
+        else if(split_query[0]=="drop")
+        {
+            if(split_query[1]=="table")
+                Inter_Drop_Table();
+            else if(split_query[1]=="index")
+                Inter_Drop_Index();
+            else throw input_format_error();
         }
-        //由于drop有两种情况，所以需要进行进一步的解析
-        else if(query.substr(0,4)=="drop"){
-            query=getLower(query, 5);
-            if(query.substr(5,5)=="table")
-                EXEC_DROP_TABLE();
-            else if(query.substr(5,5)=="index")
-                EXEC_DROP_INDEX();
+        else if(split_query[0]=="insert")
+            Inter_Insert();
+        else if(split_query[0]=="create")
+        {
+            if(split_query[1]=="table")
+                Inter_Create_Table();
+            else if(split_query[1]=="index")
+                Inter_Create_Index();
+            else throw input_format_error();
         }
-        else if(query.substr(0,6)=="insert"){
-            EXEC_INSERT();
-        }
-        //create也有两种情况
-        else if(query.substr(0,6)=="create"){
-            query=getLower(query, 7);
-            if(query.substr(7,5)=="table"){
-                EXEC_CREATE_TABLE();
-            }
-            else if(query.substr(7,5)=="index"){
-                EXEC_CREATE_INDEX();
-            }
-        }
-        else if(query.substr(0,6)=="delete"){
-            EXEC_DELETE();
-        }
-        //调用describe有两种方式，所以使用或逻辑
-        else if(query.substr(0,8)=="describe"||query.substr(0,4)=="desc"){
-            EXEC_SHOW();
-        }
-        else if(query.substr(0,4)=="exit"&&query[5]=='\0'){
-            EXEC_EXIT();
-        }
-        else if(query.substr(0,8)=="execfile"){
-            EXEC_FILE();
-        }
-        //如果所有指令都不能对应，则抛出输入格式错误
-        else{
-            throw input_format_error();
-        }
+        else if(split_query[0]=="delete")
+            Inter_Delete();
+        else if(split_query[0]=="execfile")
+            Inter_File();
+        else if(query.substr(0,4)=="exit"&&query[5]=='\0')
+            Inter_Exit();
+        else throw input_format_error();
     }
     
     catch(table_exist error){
@@ -134,7 +142,7 @@ void Interpreter::EXEC(){
         std::cout<<">>> Error: unique conflict!"<<std::endl;
     }
     catch(exit_command error){
-        std::cout<<">>> Exit"<<std::endl;
+        std::cout<<">>> Bye bye~"<<std::endl;
         exit(0);
     }
     catch(...){
@@ -142,7 +150,7 @@ void Interpreter::EXEC(){
     }
 }
 
-void Interpreter::EXEC_CREATE_INDEX(){
+void Interpreter::Inter_Create_Index(){
     CatalogManager CM;
     API API;
     std::string index_name;
@@ -151,7 +159,7 @@ void Interpreter::EXEC_CREATE_INDEX(){
     int check_index;
     index_name=getWord(13, check_index);
     check_index++;
-    if(getLower(query, check_index).substr(check_index,2)!="on")
+    if(/*getLower(query, check_index)*/query.substr(check_index,2)!="on")
         throw 1;//格式错误
     table_name=getWord(check_index+3, check_index);
     if(!CM.hasTable(table_name))
@@ -161,11 +169,11 @@ void Interpreter::EXEC_CREATE_INDEX(){
     attr_name=getWord(check_index+3, check_index);
     if(query[check_index+1]!=')'||query[check_index+3]!='\0')
         throw 1;//格式错误
-    API.createIndex(table_name, index_name, attr_name);
-    std::cout<<">>> SUCCESS"<<std::endl;
+    API.API_Create_Index(table_name, index_name, attr_name);
+    std::cout<<">>> CREATE INDEX SUCCESS"<<std::endl;
 }
 
-void Interpreter::EXEC_DROP_INDEX(){
+void Interpreter::Inter_Drop_Index(){
     API API;
     std::string table_name;
     std::string index_name;
@@ -181,20 +189,17 @@ void Interpreter::EXEC_DROP_INDEX(){
     //如果table的名字之后有多余字符串，则是格式错误
     if(query[check_index+1]!='\0')
         throw 1;//输入错误
-    API.dropIndex(table_name, index_name);
-    std::cout<<">>> SUCCESS"<<std::endl;
+    API.API_Drop_Index(table_name, index_name);
+    std::cout<<">>> DROP INDEX SUCCESS"<<std::endl;
 }
 
-void Interpreter::EXEC_EXIT(){
+void Interpreter::Inter_Exit(){
     //如果需要退出，直接抛出一个exit command
     throw exit_command();
 }
 
-void Interpreter::EXEC_FILE(){
-    //std::cout<<"******"<<query<<"*****"<<std::endl;
-    //std::cout<<check_index<<std::endl;
-    //std::cout<<"***"<<query[check_index+1]<<"***"<<std::endl;
-    //std::cout<<"***"<<file_path<<"***"<<std::endl;
+void Interpreter::Inter_File(){
+    clock_t start = clock();
     int check_index=0;
     int start_index=0;
     std::string tmp_query;
@@ -206,65 +211,41 @@ void Interpreter::EXEC_FILE(){
     std::string::iterator it;
     //创建个文件流对象,并打开
     std::fstream fs(file_path);
-    //创建字符串流对象
-    /*std::stringstream ss;
-    //把文件流中的字符输入到字符串流中
-    ss<<fs.rdbuf();
-    //获取流中的字符串
-    tmp_query=ss.str();
-    //再执行一次
-    check_index=0;
-    do{
-        while(tmp_query[check_index]!='\n')
-            check_index++;
-        query=tmp_query.substr(start_index,check_index-start_index);
-        check_index++;
-        start_index=check_index;
-        Normalize();
-        EXEC();
-    }while (tmp_query[check_index]!='\0');
-    */
-    int end=0;
+    int end_tag=0;
     int count=0;
     while(!fs.eof()){
         query.clear();
-        ++count;
+        split_query.clear();
+        count++;
         std::cout<<count<<": "<<std::endl;
         std::string tmp;
         //得到一行的所有字符，当最后一个字符为分号时结束
         do{
-            if(fs.eof()){
-                end=1;
+            if(fs.eof())
+            {
+                end_tag=1;
                 break;
             }
             getline(fs,tmp);
             query+=tmp;
             query+=' ';
         }while(tmp[tmp.length()-1]!=';');
-        if(end==1) break;
+        if(end_tag==1) break;
         //在最后补一个结尾标识符
         query[query.length()-2]='\0';
-        //调用Normalize进行字符串的规范化
-        Normalize();
-        EXEC();
+        //调用Standardize进行字符串的规范化
+        Standardize();
+        Stringsplit(query," ",split_query);
+        ProcessQuery();
+        if(count%100==0){
+            clock_t end = clock();
+            std::cout << "cost " << (double)(end - start) / CLOCKS_PER_SEC << " s" << std::endl;
+        }
     }
 }
 
-void Interpreter::EXEC_SHOW(){
-    CatalogManager CM;
-    std::string table_name;
-    int check_index;
-    //得到第一个单词的结束的位置
-    getWord(0, check_index);
-    //得到表的名字
-    table_name=getWord(check_index+1, check_index);
-    //出现多余的字符串，格式错误
-    if(query[check_index+1]!='\0')
-        throw 1;//输入错误
-    CM.showTable(table_name);
-}
 
-void Interpreter::EXEC_DELETE(){
+void Interpreter::Inter_Delete(){
     API API;
     CatalogManager CM;
     Where where_delete;
@@ -281,7 +262,7 @@ void Interpreter::EXEC_DELETE(){
     //处理删除所有信息的情况
     if(query[check_index+1]=='\0'){
         attr_name="";
-        API.deleteRecord(table_name, attr_name, where_delete);
+        API.API_Delete_Record(table_name, attr_name, where_delete);
         std::cout<<">>> SUCCESS"<<std::endl;
         return;
     }
@@ -341,11 +322,11 @@ void Interpreter::EXEC_DELETE(){
             break;
         }
     }
-    API.deleteRecord(table_name, attr_name, where_delete);
-    std::cout<<">>> SUCCESS"<<std::endl;
+    API.API_Delete_Record(table_name, attr_name, where_delete);
+    std::cout<<">>> DELETE SUCCESS"<<std::endl;
 }
 
-void Interpreter::EXEC_INSERT(){
+void Interpreter::Inter_Insert(){
     API API;
     CatalogManager CM;
     std::string table_name;
@@ -411,12 +392,12 @@ void Interpreter::EXEC_INSERT(){
         throw input_format_error();//格式错误
     if(num_of_insert!=attr_exist.num)
         throw input_format_error();//插入的数量不正确
-    API.insertRecord(table_name, tuple_insert);
-    std::cout<<">>> SUCCESS"<<std::endl;
+    API.API_Insert_Record(table_name, tuple_insert);
+    std::cout<<">>> INSERT SUCCESS"<<std::endl;
 }
 
 //还需要table的显示
-void Interpreter::EXEC_SELECT(){
+void Interpreter::Inter_Select(){
     API API;
     CatalogManager CM;
     std::string table_name;
@@ -466,7 +447,7 @@ void Interpreter::EXEC_SELECT(){
     }
     check_index++;
     if(query[check_index]=='\0')
-        output_table=API.selectRecord(table_name, target_name, where_select,op);
+        output_table=API.API_Select_Record(table_name, target_name, where_select,op);
     else{
         if(getLower(query, check_index).substr(check_index,5)!="where")
             throw input_format_error();//格式错误
@@ -541,7 +522,7 @@ void Interpreter::EXEC_SELECT(){
             check_index++;
         }
         
-        output_table=API.selectRecord(table_name, target_name, where_select,op);
+        output_table=API.API_Select_Record(table_name, target_name, where_select,op);
     }
     
     //以下是输出函数
@@ -688,7 +669,7 @@ void Interpreter::EXEC_SELECT(){
     }
 }
 
-void Interpreter::EXEC_CREATE_TABLE(){
+void Interpreter::Inter_Create_Table(){
     //输入表名
     std::string table_name;
     //定位属性位置
@@ -766,13 +747,13 @@ void Interpreter::EXEC_CREATE_TABLE(){
     }
     //调用CatalogManager，将表的信息插入进去
     API API;
-    API.createTable(table_name, attr_create, primary, index_create);
-    std::cout<<">>> SUCCESS"<<std::endl;
+    API.API_Create_Table(table_name, attr_create, primary, index_create);
+    std::cout<<">>> CREATE TABLE SUCCESS"<<std::endl;
 }
 
 
 
-void Interpreter::EXEC_DROP_TABLE(){
+void Interpreter::Inter_Drop_Table(){
     API API;
     std::string table_name;
     int check_index;
@@ -781,8 +762,8 @@ void Interpreter::EXEC_DROP_TABLE(){
     //如果table的名字之后有多余字符串，则是格式错误
     if(query[check_index+1]!='\0')
         throw 1;//输入错误
-    API.dropTable(table_name);
-    std::cout<<">>> SUCCESS"<<std::endl;
+    API.API_Drop_Table(table_name);
+    std::cout<<">>> DROP TABLE SUCCESS"<<std::endl;
 }
 
 //得到一个位置的属性类型

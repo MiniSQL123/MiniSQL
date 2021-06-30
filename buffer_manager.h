@@ -1,10 +1,4 @@
-//
-//  buffer_manager.h
-//  buffer_manager
-//
-//  Created by Hys on 2017/5/21.
-//  Copyright © 2017年 Hys. All rights reserved.
-//
+
 #ifndef _BUFFER_MANAGER_H_
 #define _BUFFER_MANAGER_H_ 1
 
@@ -12,6 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <ctime>
 #include "const.h"
 
 // Page类。磁盘文件中的每一块对应内存中的一个页（page)
@@ -33,11 +28,14 @@ class Page {
         void setAvaliable(bool avaliable);
         bool getAvaliable();
         char* getBuffer();
+        int getlvt();
+        void setlvt();
     private:
         char buffer_[PAGESIZE];//每一页都是一个大小为PAGESIZE字节的数组
         std::string file_name_;//页所对应的文件名
         int block_id_;//页在所在文件中的块号(磁盘中通常叫块)
         int pin_count_;//记录被钉住的次数。被钉住的意思就是不可以被替换
+        int lvt;
         bool dirty_;//dirty记录页是否被修改
         bool ref_;//ref变量用于时钟替换策略
         bool avaliable_;//avaliable标示页是否可以被使用(即将磁盘块load进该页)

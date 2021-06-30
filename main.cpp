@@ -11,7 +11,7 @@ int main() {
     while(1){
         Interpreter query;
         query.getQuery();
-        query.EXEC();
+        query.ProcessQuery();
     }
     return 0;
 }
