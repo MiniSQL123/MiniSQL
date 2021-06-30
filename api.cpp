@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <vector>
 #include <iterator>
-
+extern clock_t time_index_module;
 //构造函数
 API::API(){}
 
@@ -85,9 +85,11 @@ bool API::API_Create_Index(std::string table_name, std::string index_name, std::
 			break;
 		}
 	}
+    clock_t start = clock();
 	index.createIndex(file_path, type);
 	record.createIndex(index , table_name, attr_name);
-
+    clock_t end = clock();
+    time_index_module += (end-start);
 	return true;
 }
 //输入：表名，索引名

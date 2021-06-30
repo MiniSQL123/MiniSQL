@@ -1,5 +1,8 @@
 #include "record_manager.h"
 #define PATH "./DBFiles/table/"
+
+extern clock_t time_index_module;
+
 //输入：表名
 //输出：void
 //功能：建立表文件
@@ -232,6 +235,7 @@ void RecordManager::insertRecord(std::string table_name , Tuple& tuple) {
     }
 
     //更新索引
+    clock_t start = clock();
     IndexManager index_manager(tmp_name);
     for (int i = 0;i < attr.num;i++) {
         if (attr.has_index[i] == true) {
@@ -241,6 +245,8 @@ void RecordManager::insertRecord(std::string table_name , Tuple& tuple) {
             index_manager.insertIndex(file_path , d[i] , block_offset);
         }
     }
+    clock_t end = clock();
+    time_index_module += (end-start);
 }
 
 // 输入：表名

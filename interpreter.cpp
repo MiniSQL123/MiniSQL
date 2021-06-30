@@ -9,6 +9,9 @@
 #include <regex>
 #include "exception.h"
 
+clock_t time_bpio = 0;
+clock_t time_index_module = 0;
+
 Interpreter::Interpreter(){
 }
 
@@ -105,7 +108,17 @@ void Interpreter::ProcessQuery()
         else if(split_query[0]=="delete")
             Inter_Delete();
         else if(split_query[0]=="execfile")
+        {
+            clock_t execfile_start = clock();
             Inter_File();
+            clock_t execfile_end = clock();      
+            std::cout << "EXECFILE total cost: " 
+                << (double)(execfile_end - execfile_start) / CLOCKS_PER_SEC << " s" << std::endl;      
+            std::cout << "B+Tree I/O total cost: " 
+                << (double)(time_bpio) / CLOCKS_PER_SEC << " s" << std::endl;    
+            std::cout << "Index Module I/O total cost: " 
+                << (double)(time_index_module) / CLOCKS_PER_SEC << " s" << std::endl;                                 
+        }
         else if(query.substr(0,4)=="exit"&&query[5]=='\0')
             Inter_Exit();
         else throw input_format_error();
@@ -199,7 +212,7 @@ void Interpreter::Inter_Exit(){
 }
 
 void Interpreter::Inter_File(){
-    clock_t start = clock();
+    // clock_t start = clock();
     int check_index=0;
     int start_index=0;
     std::string tmp_query;
@@ -217,7 +230,7 @@ void Interpreter::Inter_File(){
         query.clear();
         split_query.clear();
         count++;
-        std::cout<<count<<": "<<std::endl;
+        // std::cout<<count<<": "<<std::endl;
         std::string tmp;
         //得到一行的所有字符，当最后一个字符为分号时结束
         do{
@@ -237,10 +250,10 @@ void Interpreter::Inter_File(){
         Standardize();
         Stringsplit(query," ",split_query);
         ProcessQuery();
-        if(count%100==0){
-            clock_t end = clock();
-            std::cout << "cost " << (double)(end - start) / CLOCKS_PER_SEC << " s" << std::endl;
-        }
+        // if(count%100==0){
+        //     clock_t end = clock();
+        //     std::cout << "cost " << (double)(end - start) / CLOCKS_PER_SEC << " s" << std::endl;
+        // }
     }
 }
 
@@ -393,7 +406,7 @@ void Interpreter::Inter_Insert(){
     if(num_of_insert!=attr_exist.num)
         throw input_format_error();//插入的数量不正确
     API.API_Insert_Record(table_name, tuple_insert);
-    std::cout<<">>> INSERT SUCCESS"<<std::endl;
+    // std::cout<<">>> INSERT SUCCESS"<<std::endl;
 }
 
 //还需要table的显示

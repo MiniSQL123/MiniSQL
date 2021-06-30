@@ -14,7 +14,8 @@
 #include "buffer_manager.h"
 #include "template_function.h"
 using namespace std;
-extern BufferManager buffer_manager;
+extern BufferManager BM;
+extern clock_t time_bpio;
 
 //模板类Node，直接适配int，float, string
 template <typename T>
@@ -347,7 +348,10 @@ BPlusTree<T>::BPlusTree(std::string in_name, int keysize, int in_degree):
 	degree(in_degree)
 {
     initTree();
+    clock_t start = clock();
     readFromDiskAll();
+    clock_t end = clock();
+    time_bpio += (end-start);
 }
 
 template <class T>
@@ -867,7 +871,7 @@ int BPlusTree<T>::getBlockNum(std::string table_name)
     char* p;
     int block_num = -1;
     do {
-        p = buffer_manager.getPage(table_name , block_num + 1);
+        p = BM.getPage(table_name , block_num + 1);
         block_num++;
     } while(p[0] != '\0');
     return block_num;
@@ -885,7 +889,7 @@ void BPlusTree<T>::readFromDiskAll()
         block_num = 1;
 
 	for (int i = 0; i < block_num; i++) {
-        char* p = buffer_manager.getPage(fname, i);
+        char* p = BM.getPage(fname, i);
 		readFromDisk(p, p+PAGESIZE);
     } // 一次把整个表都读到BUFFER里
 }
@@ -942,7 +946,7 @@ void BPlusTree<T>::writtenbackToDiskAll()
     
     // 将所有叶子结点的key, val写入page
     for (j = 0, i = 0; ntmp != NULL; j++) {
-		char* p = buffer_manager.getPage(fname, j);
+		char* p = BM.getPage(fname, j);
         int offset = 0;
         
 		memset(p, 0, PAGESIZE); // 将page清空
@@ -960,19 +964,19 @@ void BPlusTree<T>::writtenbackToDiskAll()
         
         p[offset] = '\0';// 标志一个page的结束
 
-		int page_id = buffer_manager.getPageId(fname, j);
-		buffer_manager.modifyPage(page_id);
+		int page_id = BM.getPageId(fname, j);
+		BM.modifyPage(page_id);
         
         ntmp = ntmp->next_leaf;
     }
 
     // 没用完的block都填0并标记已修改。
     while (j < block_num) {
-		char* p = buffer_manager.getPage(fname, j);
+		char* p = BM.getPage(fname, j);
 		memset(p, 0, PAGESIZE);
 
-		int page_id = buffer_manager.getPageId(fname, j);
-		buffer_manager.modifyPage(page_id);
+		int page_id = BM.getPageId(fname, j);
+		BM.modifyPage(page_id);
 
         j++;
     }
